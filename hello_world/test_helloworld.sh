@@ -9,4 +9,4 @@
 cd ${PBS_O_WORKDIR}
 
 module load mpich-3.2
-mpirun.actual -n 4 /home/mostafa.haggag/programs/hello_world/mpi_peitro
+mpirun.actual -n 4 /home/pietro.demurtas/hello_world/mpi_hello
