@@ -17,49 +17,55 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 /*MACROS end*/
 int main (){
     // /* VARIABLES DEFINE START*/
-    int ncid;               // nc file id  
-    int height_1_varid;          // nz1 id
-    int time_varid;             // time id
-    int unod_id;                        //unod id
-    int retval; // return value to be printed
-    int rec; // variable for looping
-    double times[N_TIME], nz1s[N_NZ1]; // two arrays containing the index .
+    /*NETCDF id*/
+    int ncid;
+    int height_1_varid;          
+    int time_varid;
+    int unod_id;
+    int retval;
+
+    /* These program variables hold the time and depth. */
+    double times[N_TIME], nz1s[N_NZ1]; 
+
+    /* Program variables to hold the data we will read. 
+    We will only need enough space to hold one timestep of data; one record. */
     static float u_speed[N_NZ1][GRID_POINTS];
-    // /* The start and count arrays will tell the netCDF library where to
-    //   read our data. */
+
+    /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
-    // /* VARIABLES DEFINE END*/
-    // /* Open the file. */
+
+    /* Open the file. */
     if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid)))
         ERR(retval);
-    // /* Get the varids of the nz and nz1 coordinate
-    // * variables. */
+
+    /* Get the varids of the time and nz1 coordinate variables. */
     if ((retval = nc_inq_varid(ncid, HEIGHT_1_NAME, &height_1_varid)))
         ERR(retval);
     if ((retval = nc_inq_varid(ncid, TIME, &time_varid)))
         ERR(retval);
-    // // // /* Read the coordinate variable data. */
+
+    /* Read the coordinate variable data. */
     if ((retval = nc_get_var_double(ncid, height_1_varid, &nz1s[0])))
         ERR(retval);
     if ((retval = nc_get_var_double(ncid, time_varid, &times[0])))
         ERR(retval);
-    // This function is only used for testing delet it later START
-    // int i;
-    // for (i = 0; i < 12; i++)
-    // {
-    //     printf("%lf,",times[i] );
-    // }
-    // This function is only used for testing delet it later END
 
-    // /* Get the varids of the velocity
-    // * variables. */
+    /* Get the varid of the velocity netCDF variable. */
     if ((retval = nc_inq_varid(ncid, UNOD, &unod_id)))
             ERR(retval);
+    /* Read the data. Since we know the contents of the file we know that the 
+    data arrays in this program are the correct size to hold one timestep.*/
     count[0] = 1;
     count[1] = N_NZ1;
     count[2] = GRID_POINTS;
     start[1] = 0;
     start[2] = 0;
+    /* end of setup of NetCDF reading */
+    
+    /*LOOOPING variables*/
+    int rec; 
+    /* sum matrix */
+    static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
     for (rec = 0; rec < N_TIME; rec++){
         start[0] = rec;
         if ((retval = nc_get_vara_float(ncid, unod_id, start, 
