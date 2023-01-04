@@ -8,6 +8,5 @@
 #PBS -q short_cpuQ
 cd ${PBS_O_WORKDIR}
 
-echo  pdw = $(pwd)/reading_data
 module load mpich-3.2
 mpirun.actual -n 4 $(pwd)/reading_data.out
