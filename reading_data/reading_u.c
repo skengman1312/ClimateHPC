@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <netcdf.h>
 #include <mpi.h>
@@ -47,7 +48,7 @@ int main (int argc, char *argv[]){
 
     /* Program variables to hold the data we will read. 
     We will only need enough space to hold one timestep of data; one record. */
-    static float u_speed[GRID_POINTS];
+    static float u_speed[GRID_POINTS]={-1};
 
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
@@ -83,15 +84,25 @@ int main (int argc, char *argv[]){
     /* end of setup of NetCDF reading */
     
     /*LOOOPING variables*/
-    int rec; 
+    int rec;
+    /*Define the number of levels to do per process*/
+    int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
+    /*you have 69level/4 proccess using ceil operator give you 18 level per process*/
+    int limit = (rank + 1) * levels_per_proc;
+    
+    if (limit > N_NZ1)
+    {
+        limit = N_NZ1;
+    }
+
     /* sum matrix */
     // static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
-    for (rec = 0; rec < N_NZ1; rec++){
+    for (rec = rank * levels_per_proc; rec < limit; rec++){
         start[1] = rec;
         if ((retval = nc_get_vara_float(ncid, unod_id, start, 
 				      count, &u_speed[0])))
             ERR(retval);
-        printf("%lf\n",u_speed[0]);
+        printf("%lf,rank%d\n",u_speed[rec],rank);
         break;
     }
     /*CLOSING FILE*/
