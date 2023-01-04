@@ -1,7 +1,7 @@
 #include<mpi.h>
 #include<stdio.h>
 /*
- mpicc -g -Wall -o mpi_peitro helloworld.c
+ mpicc -g -Wall -o mpi_peitro.out helloworld.c
  chmod u+x mpi_peitro 
  qsub test_helloworld.sh
 */

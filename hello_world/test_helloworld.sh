@@ -9,4 +9,4 @@
 cd ${PBS_O_WORKDIR}
 
 module load mpich-3.2
-mpirun.actual -n 4 $(pwd)/hello_world
+mpirun.actual -n 4 $(pwd)/mpi_peitro.out
