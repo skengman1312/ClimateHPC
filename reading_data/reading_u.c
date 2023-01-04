@@ -5,7 +5,7 @@
 #include <omp.h>
 
 /*
-mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u reading_u.c -lm 
+mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u.out reading_u.c -lm 
 */
 /*MACROS START*/
 #define FILE_NAME "/shares/HPC4DataScience/FESOM2/unod.fesom.2010.nc"
