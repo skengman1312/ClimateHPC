@@ -8,5 +8,6 @@
 #PBS -q short_cpuQ
 cd ${PBS_O_WORKDIR}
 
+echo  pdw = $(pwd)/reading_data
 module load mpich-3.2
-mpirun.actual -n 4 /home/pietro.demurtas/ClimateHPC/reading_data/reading_data
+mpirun.actual -n 4 $(pwd)/reading_data
