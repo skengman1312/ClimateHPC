@@ -105,6 +105,7 @@ int main (int argc, char *argv[]){
         printf("%lf,rank%d\n",u_speed[rec],rank);
         break;
     }
+    
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);
