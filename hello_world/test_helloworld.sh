@@ -7,6 +7,7 @@
 # set the excution on the short queue
 #PBS -q short_cpuQ
 cd ${PBS_O_WORKDIR}
+mpicc -std=c99 -g -Wall -o helloworld.out helloworld.c
 
 module load mpich-3.2
-mpirun.actual -n 4 $(pwd)/mpi_peitro.out
+mpirun.actual -n 4 $(pwd)/helloworld.out
