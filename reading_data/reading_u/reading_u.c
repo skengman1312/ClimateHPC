@@ -50,6 +50,9 @@ int main (int argc, char *argv[]){
     We will only need enough space to hold one timestep of data; one record. */
     static float u_speed[GRID_POINTS]={-1};
 
+    /*array of matrices containing all the different output average matrices calculated for each file*/
+    float *final_averages = malloc(GRID_POINTS* sizeof(float));
+
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
     /* VARIABLES DEFINE END*/
@@ -85,6 +88,7 @@ int main (int argc, char *argv[]){
     
     /*LOOOPING variables*/
     int rec;
+    int i; 
     /*Define the number of levels to do per process*/
     int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
     /*you have 69level/4 proccess using ceil operator give you 18 level per process*/
@@ -96,16 +100,22 @@ int main (int argc, char *argv[]){
     }
 
     /* sum matrix */
-    // static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
+    static float sum_u_speed[GRID_POINTS] = {0};
     for (rec = rank * levels_per_proc; rec < limit; rec++){
         start[1] = rec;
         if ((retval = nc_get_vara_float(ncid, unod_id, start, 
 				      count, &u_speed[0])))
             ERR(retval);
-        printf("%lf,rank%d\n",u_speed[rec],rank);
+        for (i = 0; i < GRID_POINTS;i++){
+            sum_u_speed[i] += u_speed[i];
+        }
+        printf("%lf,rank%d\n", u_speed[rec], rank);
         break;
     }
-    
+    //pointer to sum matrix, to consider the matrix as an array.
+    int *array_matr = (int *)sum_u_speed;
+    MPI_Reduce(array_matr, &final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);
