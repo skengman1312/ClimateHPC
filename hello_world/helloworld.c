@@ -18,18 +18,19 @@ int main(int argc,char**argv){
  // get the rank of processes
  int world_rank;
  MPI_Comm_rank(MPI_COMM_WORLD,&world_rank);
- int arr[4][3]  = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+ int arr[8][3]  = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                   13, 14, 15, 16, 17 ,18, 19 ,20, 21, 22, 23, 24};
  // Print off a hello world message
  //printf("Hello world from process rank %d out of %d processors\n", world_rank, world_size);
  //   if (world_rank == 0)
 
- int * rec[3];
- int sendcnt = 3; /* how many items are sent to each process */
- int recvcnt = 3; /* how many items are received by each process */
+ int rec[2][3] = {0};
+ int sendcnt = 6; /* how many items are sent to each process */
+ int recvcnt = 6; /* how many items are received by each process */
  MPI_Scatter(arr, sendcnt, MPI_INT,
-                &rec, recvcnt, MPI_INT, 0, MPI_COMM_WORLD);
+                rec, recvcnt, MPI_INT, 0, MPI_COMM_WORLD);
 
- printf("My rank is %i and i got %i\n", world_rank, rec);
+ printf("My rank is %i and I recived from  %i to %i\n", world_rank, rec[0][0],rec[1][2]);
 
 
  //printf("%i\n", arr[1][world_rank]);
