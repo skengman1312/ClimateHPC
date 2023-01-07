@@ -129,15 +129,21 @@ int main (int argc, char *argv[]){
     //pointer to sum matrix, to consider the matrix as an array.
     MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank==0){
+        /*could be done in a more elegent way but i keep like this for now*/
+        for (i = 0; i < GRID_POINTS;i++){
+            final_averages[i] = final_averages[i] / N_NZ1;
+        }
         /* Create the file. */
-        int y = 1;// indicating time step 1 
+        int y = 1;                                            // indicating time step 1 
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
             ERR(retval);
+        /*define dimension*/
         if ((retval = nc_def_dim(ncid2, TIME, 1, &time_new_id)))
             ERR(retval);
-        // if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &gp_new_id)))
-        //     ERR(retval);
-        if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, GRID_POINTS, &time_new_id, &var_new_id)))// define the varibael
+        if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &gp_new_id)))
+            ERR(retval);
+        /*define variable*/
+        if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, 1, &gp_new_id, &var_new_id)))// define the varibael
             ERR(retval);
         if ((retval = nc_def_var(ncid2, "time", NC_INT, 1, &time_new_id, &time_var_new_id)))// define the varibael
             ERR(retval);
