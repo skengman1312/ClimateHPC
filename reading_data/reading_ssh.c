@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <netcdf.h>
+#include<mpi.h>
 /*
 mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_ssh.out reading_ssh.c -lm
 */
@@ -16,14 +17,40 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define NDIMS 2
 #define GRID_POINTS 8852366
 /*MACROS end*/
-int main (){
+int main () {
+    // Initialize the MPI environment. The two arguments to MPI Init are not
+    // currently used by MPI implementations, but are there in case future
+    // implementations might need the arguments.
+    MPI_Init(NULL, NULL);
+
     // /* VARIABLES DEFINE START*/
+    // get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // get the rank of processes
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // size across each dimension.
+    int dim[2] = {30, GRID_POINTS};
+    // dimensions of the scattered data received by each process
+    int local_dim[2] = {dim[0] / world_size, dim[1]};
+
+    // receive buffer
+    float rec[local_dim[0]][local_dim[1]];
+    float loc_avg[local_dim[1]];
+    float avg[local_dim[1]];
+    int sendcnt = local_dim[0] * local_dim[1]; /* how many items are sent to each process */
+    int recvcnt = local_dim[0] * local_dim[1];
+
     /*NETCDF id*/
     int ncid;
     int ssh_varid;
     int time_varid;
     int ssh_id;
     int retval;
+
 
     /* These program variables hold the time and depth. */
     double times[N_TIME], nz1s[N_NZ1];
@@ -34,21 +61,17 @@ int main (){
 
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
-
+    if (world_rank == 0){
     /* Open the file. */
-    if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid)))
-        ERR(retval);
+    if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid))) ERR(retval);
 
     /* Get the varids of the time and nz1 coordinate variables. */
-    if ((retval = nc_inq_varid(ncid, SSH, &ssh_varid)))
-        ERR(retval);
-    if ((retval = nc_inq_varid(ncid, TIME, &time_varid)))
-        ERR(retval);
+    if ((retval = nc_inq_varid(ncid, SSH, &ssh_varid))) ERR(retval);
+    if ((retval = nc_inq_varid(ncid, TIME, &time_varid))) ERR(retval);
 
 
     /* Get the varid of the ssh netCDF variable. */
-    if ((retval = nc_inq_varid(ncid, SSH, &ssh_id)))
-            ERR(retval);
+    if ((retval = nc_inq_varid(ncid, SSH, &ssh_id))) ERR(retval);
     /* Read the data. Since we know the contents of the file we know that the 
     data arrays in this program are the correct size to hold one timestep.*/
     count[0] = 1;
@@ -57,26 +80,55 @@ int main (){
     start[0] = 0;
     start[1] = 0;
     /* end of setup of NetCDF reading */
-    
+
     /*LOOOPING variables*/
-    int rec; 
+
     /* sum matrix */
 //    static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
-    for (rec = 0; rec < 30; rec++){
-        start[0] = rec;
+    for (int i = 0; i < 30; i++) {
+        start[0] = i;
         if ((retval = nc_get_vara_float(ncid, ssh_id, start,
-				      count, &ssh[rec][0])))
-            ERR(retval);
+                                        count, &ssh[i][0]))) ERR(retval);
 
     }
-    printf("%lf\n",ssh[0][0]);
-    printf("%lf\n",ssh[29][8852365]);
+    printf("%lf\n", ssh[0][0]);
+    printf("%lf\n", ssh[29][8852365]);
     /*CLOSING FILE*/
-    if ((retval = nc_close(ncid)))
-        ERR(retval);
+    if ((retval = nc_close(ncid))) ERR(retval);
     printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
+    // End of I
+}
 
+    // MPI call and functional part
+    MPI_Scatter(ssh, sendcnt, MPI_INT,
+                rec, recvcnt, MPI_INT, 0, MPI_COMM_WORLD);
+    printf("My rank is %i\n", world_rank);
+    // loading the sum in a vector of size N-points
+    for (int i = 0; i < local_dim[1]; i++){
+        for (int j = 0; j < local_dim[0]; j++) {
+            loc_avg[i] += rec[j][i];
+        }
+    }
 
+    // averaging the sums for every element in the vector
+    for (int i = 0; i < local_dim[1]; ++i) {
+        loc_avg[i] = loc_avg[i] / local_dim[0];
+    }
+
+    printf("My rank is %i and I received from  %g to %g\n", world_rank, rec[0][0],rec[local_dim[0]-1][local_dim[1]-1]);
+    printf("My loc_avg array is %g, %g, %g\n", loc_avg[0], loc_avg[1], loc_avg[2]);
+
+    // reduce with sum operator
+    MPI_Reduce(loc_avg, avg, local_dim[1], MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // averaging the results of the several threads to get as single average vector
+    for (int i = 0; i < local_dim[1]; ++i) {
+        avg[i] = avg[i]/world_size;
+    }
+    if (world_rank == 0)
+        printf("I am proc 0 and the collected avg is %g, %g, %g\n", avg[0], avg[1], avg[2]);
+    // Finalize the MPI environment. No more MPI calls can be made after this
+    MPI_Finalize();
     return 0;
 }
 
