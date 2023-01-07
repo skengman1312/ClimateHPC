@@ -18,6 +18,8 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define N_TIME 12            // the variable time has 12 entries
 #define NDIMS 3
 #define GRID_POINTS 8852366
+// for write
+#define FILE_NAME2 "map_summarized.nc"
 /*MACROS end*/
 int main (int argc, char *argv[]){
     /* MPI  inizialization */
@@ -42,7 +44,12 @@ int main (int argc, char *argv[]){
     int time_varid;
     int unod_id;
     int retval;
-
+    /*Netcdf id for write*/
+    int ncid2;
+    int time_new_id;
+    int gp_new_id;
+    int time_var_new_id;
+    int var_new_id;
     /* These program variables hold the time and depth. */
     double times[N_TIME], nz1s[N_NZ1]; 
 
@@ -114,9 +121,38 @@ int main (int argc, char *argv[]){
         }
     }
     //pointer to sum matrix, to consider the matrix as an array.
-    int *array_matr = (int *)sum_u_speed;
-    MPI_Reduce(array_matr, &final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-
+    MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank==0){
+        /* Create the file. */
+        int y = 1;// indicating time step 1 
+        if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
+            ERR(retval);
+        if ((retval = nc_def_dim(ncid2, TIME, 1, &time_new_id)))
+            ERR(retval);
+        if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &gp_new_id)))
+            ERR(retval);
+        if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, GRID_POINTS, gp_new_id, &var_new_id)))// define the varibael
+            ERR(retval);
+        if ((retval = nc_def_var(ncid2, "time", NC_INT, 1, time_new_id, &time_var_new_id)))// define the varibael
+            ERR(retval);
+        if ((retval = nc_put_att_text(ncid2, time_var_new_id, "TIME", 
+				 strlen('sec'), 'sec')))
+            ERR(retval);
+        if ((retval = nc_put_att_text(ncid2, var_new_id, "UNITS", 
+				 strlen('m/s'), 'm/s')))
+            ERR(retval);
+        /* End define mode. */
+        if ((retval = nc_enddef(ncid2)))
+            ERR(retval);
+        if ((retval = nc_put_var_float(ncid2, var_new_id, &final_averages[0])))
+            ERR(retval);
+        if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y)))
+            ERR(retval);
+        /* Close the file. This frees up any internal netCDF resources
+        * associated with the file, and flushes any buffers. */
+        if ((retval = nc_close(ncid2)))
+            ERR(retval);
+    }
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);
