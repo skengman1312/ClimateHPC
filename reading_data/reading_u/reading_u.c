@@ -98,7 +98,9 @@ int main (int argc, char *argv[]){
     {
         limit = N_NZ1;
     }
-
+    int thread_count;
+#pragma omp parallel
+    thread_count = omp_get_num_threads();
     /* sum matrix */
     static float sum_u_speed[GRID_POINTS] = {0};
     for (rec = rank * levels_per_proc; rec < limit; rec++){
@@ -106,11 +108,10 @@ int main (int argc, char *argv[]){
         if ((retval = nc_get_vara_float(ncid, unod_id, start, 
 				      count, &u_speed[0])))
             ERR(retval);
+        #  pragma omp parallel for num_threads(thread_count)private(i )
         for (i = 0; i < GRID_POINTS;i++){
             sum_u_speed[i] += u_speed[i];
         }
-        printf("%lf,rank%d\n", u_speed[rec], rank);
-        break;
     }
     //pointer to sum matrix, to consider the matrix as an array.
     int *array_matr = (int *)sum_u_speed;
