@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=5:ncpus=4:ompthreads=8:mem=4gb 
+#PBS -l select=2:ncpus=4:ompthreads=8:mem=4gb 
 
 # set max execution time
 #PBS -l walltime=0:30:00
