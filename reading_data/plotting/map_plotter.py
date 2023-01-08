@@ -9,7 +9,8 @@ def loadNC(path):
 
 print(loadNC('../map_summarized.nc'))
 print(loadNC('../reading_u/map_summarized.nc'))
+mesh = xr.open_dataset("fesom.mesh.diag.nc")
+grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
+print(grid)
 
-ds = xr.open_dataset('../reading_u/map_summarized.nc')
-df = ds.to_dataframe()
-print(df)
+
