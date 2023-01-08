@@ -16,6 +16,13 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define N_TIME 365            // the variable time has 12 entries
 #define NDIMS 2
 #define GRID_POINTS 8852366
+
+// for write
+#define FILE_NAME2 "map_summarized.nc"
+#define UNITS_ssh "m"
+#define UNITS "units"
+#define UNITS_time "s"
+
 /*MACROS end*/
 int main () {
     // Initialize the MPI environment. The two arguments to MPI Init are not
@@ -51,9 +58,14 @@ int main () {
     int ssh_id;
     int retval;
 
+    /*Netcdf id for write*/
+    int ncid2;
+    int time_new_id;
+    int gp_new_id;
+    int time_var_new_id;
+    int var_new_id;
 
-    /* These program variables hold the time and depth. */
-    double times[N_TIME], nz1s[N_NZ1];
+
 
     /* Program variables to hold the data we will read. 
     We will need enough space to hold all the timesteps of data. */
@@ -127,6 +139,46 @@ int main () {
     }
     if (world_rank == 0)
         printf("I am proc 0 and the collected avg is %g, %g, %g\n", avg[0], avg[1], avg[2]);
+
+    if (world_rank==0){
+        int y = 1;                                            // indicating time step 1
+        if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
+        ERR(retval);
+        /*define dimension*/
+        if ((retval = nc_def_dim(ncid2, TIME, 1, &time_new_id)))
+        ERR(retval);
+        if ((retval = nc_def_dim(ncid2, SSH, GRID_POINTS, &gp_new_id)))
+        ERR(retval);
+        /*define variable*/
+        if ((retval = nc_def_var(ncid2, "sea_surface_elevation", NC_FLOAT, 1, &gp_new_id, &var_new_id)))// define the varibael
+        ERR(retval);
+        if ((retval = nc_def_var(ncid2, "time", NC_INT, 1, &time_new_id, &time_var_new_id)))// define the varibael
+        ERR(retval);
+        if ((retval = nc_put_att_text(ncid2, time_var_new_id, UNITS,
+                                      strlen(UNITS_time), UNITS_time)))
+        ERR(retval);
+        if ((retval = nc_put_att_text(ncid2, var_new_id, UNITS,
+                                      strlen(UNITS_ssh), UNITS_ssh)))
+        ERR(retval);
+
+        /* End define mode. */
+        if ((retval = nc_enddef(ncid2)))
+        ERR(retval);
+        if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y)))
+        ERR(retval);
+        if ((retval = nc_put_var_float(ncid2, var_new_id, &avg[0])))
+        ERR(retval);
+
+        /* Close the file. This frees up any internal netCDF resources
+        * associated with the file, and flushes any buffers. */
+        if ((retval = nc_close(ncid2)))
+        ERR(retval);
+
+        /*CLOSING FILE*/
+        if ((retval = nc_close(ncid)))
+        ERR(retval);
+
+    }
     // Finalize the MPI environment. No more MPI calls can be made after this
     MPI_Finalize();
     return 0;
