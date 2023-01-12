@@ -40,8 +40,12 @@ def map_plot(df, grid, filename="map.png"):
 
 ssh = loadNC('../map_summarized.nc')
 unod = loadNC('../reading_u/map_summarized.nc')
+vnod = loadNC("../reading_v/map_summarized_vnod.nc")
 mesh = xr.open_dataset("fesom.mesh.diag.nc")
 grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
 
-map_plot(ssh, grid, filename="shh_map.png")
-map_plot(unod, grid, filename="unod_map.png")
+
+
+# map_plot(ssh, grid, filename="shh_map.png")
+# map_plot(unod, grid, filename="unod_map.png")
+map_plot(vnod, grid, filename="vnod_map.png")

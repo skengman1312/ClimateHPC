@@ -112,8 +112,8 @@ int main () {
 }
 
     // MPI call and functional part
-    MPI_Scatter(ssh, sendcnt, MPI_INT,
-                rec, recvcnt, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(ssh, sendcnt, MPI_FLOAT,
+                rec, recvcnt, MPI_FLOAT, 0, MPI_COMM_WORLD);
     printf("My rank is %i\n", world_rank);
     // loading the sum in a vector of size N-points
     for (int i = 0; i < local_dim[1]; i++){
