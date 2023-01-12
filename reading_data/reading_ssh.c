@@ -174,9 +174,9 @@ int main () {
         if ((retval = nc_close(ncid2)))
         ERR(retval);
 
-        /*CLOSING FILE*/
-        if ((retval = nc_close(ncid)))
-        ERR(retval);
+//        /*CLOSING FILE*/
+//        if ((retval = nc_close(ncid)))
+//        ERR(retval);
 
     }
     // Finalize the MPI environment. No more MPI calls can be made after this
