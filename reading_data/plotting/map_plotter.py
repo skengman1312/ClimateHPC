@@ -2,6 +2,10 @@ import pandas as pd
 import xarray as xr
 import geopandas
 import seaborn as sns
+import numpy as np
+from sklearn.cluster import KMeans
+
+
 # import geoplot
 
 import matplotlib.pyplot as plt
@@ -25,9 +29,9 @@ def map_plot(df, grid, filename="map.png"):
     # print(df_grid.sea_surface_elevation)
     print("KDE")
 
-    plt.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:,2], cmap='coolwarm', alpha=0.3)
+    plt.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3)
 
-    #plt.scatter(x=df_grid.lon, y=df_grid.lat, c=df_grid.iloc[:,2], s=0.01, cmap='coolwarm')
+    # plt.scatter(x=df_grid.lon, y=df_grid.lat, c=df_grid.iloc[:,2], s=0.01, cmap='coolwarm')
     plt.colorbar()
     # # sns.kdeplot(data=df_grid.head(10000),  # .iloc[start_index:start_index+3_000_000],
     #             x='lon',
@@ -51,10 +55,27 @@ def map_plot(df, grid, filename="map.png"):
 ssh = loadNC('../map_summarized.nc')
 unod = loadNC('../reading_u/map_summarized.nc')
 vnod = loadNC("../reading_v/map_summarized_vnod.nc")
+vnod.rename(columns={"speed": "vspeed"}, inplace=True)
+ssh.rename(columns={"sea_surface_elevation": "ssh"})
 mesh = xr.open_dataset("fesom.mesh.diag.nc")
 grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
 
-print(ssh.head(10_000))
+cdata = pd.concat([unod, vnod], axis=1)       #ssh, unod, vnod], axis=1)
+
+# cdata.drop("time", axis=0)
+
+cdata.reset_index(1, inplace=True)
+cdata.drop("time", axis=1, inplace=True)
+book2 = KMeans(n_clusters=5, random_state=1312, verbose=True).fit_predict(cdata)
+#counts = np.unique(book2.labels_, return_counts=True)
+dbook = pd.DataFrame(book2)
+print(dbook)
+map_plot(dbook, grid, "cluster_map.png")
+print(book2.shape)
+#print(counts)
+
+
+
 # ssh.head(1_000_000).plot()
 # plt.show()
 # print(unod.head(1000))
@@ -62,5 +83,5 @@ print(ssh.head(10_000))
 # plt.show()
 # print(vnod.head(10))
 # map_plot(ssh, grid, filename="shh_map.png")
-# map_plot(unod, grid, filename="point_density_map.png")
-map_plot(vnod, grid, filename="vnod_map.png")
+# map_plot(unod, grid, filename="unod_map.png")
+# map_plot(vnod, grid, filename="vnod_map.png")
