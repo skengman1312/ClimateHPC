@@ -22,14 +22,16 @@ def map_plot(df, grid, filename="map.png"):
     #
     # ax = geoplot.kdeplot(df_grid.head(1000), shade=True, cmap='Reds', projection=geoplot.crs.AlbersEqualArea())
     # geoplot.polyplot(df_grid, ax=ax, zorder=1)
-     # print(df_grid.sea_surface_elevation)
+    # print(df_grid.sea_surface_elevation)
     print("KDE")
-    plt.tricontourf(df_grid.lon, df_grid.lat,df_grid.sea_surface_elevation, cmap='coolwarm', alpha = 0.3)
+
+    plt.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:,2], cmap='coolwarm', alpha=0.3)
+
+    #plt.scatter(x=df_grid.lon, y=df_grid.lat, c=df_grid.iloc[:,2], s=0.01, cmap='coolwarm')
     plt.colorbar()
-    #plt.scatter(x=df_grid.lon, y=df_grid.lat, c = df_grid.sea_surface_elevation)
     # # sns.kdeplot(data=df_grid.head(10000),  # .iloc[start_index:start_index+3_000_000],
     #             x='lon',
-    #             y='lat',
+    #
     #             fill=True,
     #             cmap='coolwarm',
     #             alpha=0.3,
@@ -40,8 +42,9 @@ def map_plot(df, grid, filename="map.png"):
     #             warn_singular=False,
     #             ax=ax)
 
-    #plt.savefig(filename, dpi=1000)
-    plt.savefig("prova.png")
+    # sns.scatterplot(df_grid,  x='lon',  y='lat',  cmap='coolwarm',  hue="sea_surface_elevation",  ax=ax)
+    plt.savefig(filename, dpi=1000)
+
     plt.show()
 
 
@@ -52,12 +55,12 @@ mesh = xr.open_dataset("fesom.mesh.diag.nc")
 grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
 
 print(ssh.head(10_000))
-#ssh.head(1_000_000).plot()
-#plt.show()
+# ssh.head(1_000_000).plot()
+# plt.show()
 # print(unod.head(1000))
 # unod.head(1_000_000).plot()
 # plt.show()
 # print(vnod.head(10))
-map_plot(ssh, grid, filename="shh_map.png")
-# map_plot(unod, grid, filename="unod_map.png")
-# map_plot(vnod, grid, filename="vnod_map.png")
+# map_plot(ssh, grid, filename="shh_map.png")
+# map_plot(unod, grid, filename="point_density_map.png")
+map_plot(vnod, grid, filename="vnod_map.png")
