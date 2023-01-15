@@ -22,7 +22,7 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 #define GRID_POINTS 8852366
 #define DEBUG 1
 // for write
-#define FILE_NAME2 "map_summarized.nc"
+#define FILE_NAME2 "map_summarized_fuldataset.nc"
 #define UNITS_speed "m_s"
 #define UNITS "units"
 #define UNITS_time "s"
@@ -71,14 +71,14 @@ int main (int argc, char *argv[]){
     struct timeval t_timer1_finish;
     struct timeval t_timer2_start;
     struct timeval t_timer2_finish;
-    double t_nc_reading_time = 0;
-    double t_threading_reading_time = 0;
-    double t_nc_reading_time_sum = 0;
-    double t_threading_reading_time_sum = 0;
-    double t_nc_reading_time_Totalsum = 0;
-    double t_threading_reading_time_Totalsum = 0;
-    double t_comm_time = 0;
-    double t_time_from_start = 0;
+    double t_nc_reading_time ;
+    double t_threading_reading_time ;
+    double t_nc_reading_time_sum ;
+    double t_threading_reading_time_sum ;
+    double t_nc_reading_time_Totalsum ;
+    double t_threading_reading_time_Totalsum ;
+    double t_comm_time ;
+    double t_time_from_start;
     long int t_seconds = 0;
     long int t_minutes = 0;
     long int t_hours = 0;
@@ -88,12 +88,10 @@ int main (int argc, char *argv[]){
 
     /* Program variables to hold the data we will read. 
     We will only need enough space to hold one timestep of data; one record. */
-    // static float u_speed[GRID_POINTS]={-1};
-    float *u_speed;
-    u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
+    static float u_speed[GRID_POINTS]={-1};
+
     /*array of matrices containing all the different output average matrices calculated for each file*/
-    float *final_averages;
-    final_averages= (float *)calloc(GRID_POINTS ,sizeof(float));
+    float *final_averages = malloc(N_TIME*GRID_POINTS* sizeof(float));
 
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
@@ -119,19 +117,12 @@ int main (int argc, char *argv[]){
     /* Get the varid of the velocity netCDF variable. */
     if ((retval = nc_inq_varid(ncid, UNOD, &unod_id)))
             ERR(retval);
-    /* Read the data. Since we know the contents of the file we know that the 
-    data arrays in this program are the correct size to hold one timestep.*/
-    count[0] = 1;
-    count[1] = 1;
-    count[2] = GRID_POINTS;
-    start[0] = 0;
-    // start[1] = 0;
-    start[2] = 0;
-    /* end of setup of NetCDF reading */
+
     
     /*LOOOPING variables*/
     int rec;
-    int i; 
+    int i;
+    int k ;
     /*Define the number of levels to do per process*/
     int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
     /*you have 69level/4 proccess using ceil operator give you 18 level per process*/
@@ -144,16 +135,38 @@ int main (int argc, char *argv[]){
     int thread_count;
 #pragma omp parallel
     thread_count = omp_get_num_threads();
-    if (rank == 0)
+    /* Read the data. Since we know the contents of the file we know that the 
+    data arrays in this program are the correct size to hold one timestep.*/
+    count[0] = 1;/*1 time*/
+    count[1] = 1;/*1 level*/
+    count[2] = GRID_POINTS;/*all gridpoints*/
+    // start[0] = k;
+    // start[1] = 0;
+    start[2] = 0;
+    static float sum_u_speed[GRID_POINTS] = {0};
+
+    /* end of setup of NetCDF reading */
+    for (k = 0;k<N_TIME; k++){
+        start[0] = k;
+        t_nc_reading_time = 0 ;
+        t_threading_reading_time = 0 ;
+        t_nc_reading_time_sum = 0 ;
+        t_threading_reading_time_sum = 0 ;
+        t_nc_reading_time_Totalsum = 0;
+        t_threading_reading_time_Totalsum = 0;
+        t_comm_time = 0 ;
+        t_time_from_start = 0;
+        if (rank == 0)
         {
             printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
             printf("Number of threads: %d \n", thread_count);
             gettimeofday(&t_timer1_start, NULL); //start timer of rank0
         }
+
+    }
+
+
     /* sum matrix */
-    float * sum_u_speed;
-    sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
-    // static float sum_u_speed[GRID_POINTS] = {0};
     for (rec = rank * levels_per_proc; rec < limit; rec++){
         gettimeofday(&t_timer2_start, NULL); //start reading timer
         start[1] = rec;
@@ -177,14 +190,12 @@ int main (int argc, char *argv[]){
     printf("The processes %d took %lf seconds to read all the nc data \n",rank,t_nc_reading_time_sum);
     printf("The processes %d took %lf seconds to thread \n",rank,t_threading_reading_time_sum);
 #endif
-    free(u_speed);
     gettimeofday(&t_timer2_start, NULL); // start communication timer
     MPI_Reduce(&t_nc_reading_time_sum, &t_nc_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
     gettimeofday(&t_timer2_finish, NULL);
     t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
-    free(sum_u_speed);    
 
     if (rank == 0)
     {
