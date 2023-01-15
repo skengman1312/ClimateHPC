@@ -1,10 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <netcdf.h>
 #include <mpi.h>
 #include <omp.h>
-#include <stdlib.h>
+#include <sys/time.h>
+
 /*
 mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u.out reading_u.c -lm 
 */
@@ -18,6 +20,7 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 #define N_TIME 12            // the variable time has 12 entries
 #define NDIMS 3
 #define GRID_POINTS 8852366
+#define DEBUG 1
 // for write
 #define FILE_NAME2 "map_summarized.nc"
 #define UNITS_speed "m_s"
@@ -26,6 +29,14 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 
 
 /*MACROS end*/
+/*FUNCTIONS START*/
+/*This is a function that measures time using system time val
+We subtract both time instances and we convert final output in seconds*/
+double time_diff(struct timeval *start, struct timeval *end);
+void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
+
+/*FUNCTIONS end*/
+
 int main (int argc, char *argv[]){
     /* MPI  inizialization */
     MPI_Init(&argc, &argv);
@@ -39,7 +50,7 @@ int main (int argc, char *argv[]){
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
     // Print off a hello world message with processor name
-    printf("greetings:  %s, rank %d out of %d processors\n",
+    printf("greetings:  %s, rank %d out of %d processes\n",
            processor_name, rank, size);
     /* VARIABLES DEFINE START*/
     
@@ -55,6 +66,22 @@ int main (int argc, char *argv[]){
     int gp_new_id;
     int time_var_new_id;
     int var_new_id;
+    /*Time variables to be used to see how much time each process takes*/
+    struct timeval t_timer1_start;/*timer for process 0*/
+    struct timeval t_timer1_finish;
+    struct timeval t_timer2_start;
+    struct timeval t_timer2_finish;
+    double t_nc_reading_time = 0;
+    double t_threading_reading_time = 0;
+    double t_nc_reading_time_sum = 0;
+    double t_threading_reading_time_sum = 0;
+    double t_nc_reading_time_Totalsum = 0;
+    double t_threading_reading_time_Totalsum = 0;
+    double t_comm_time = 0;
+    double t_time_from_start = 0;
+    long int t_seconds = 0;
+    long int t_minutes = 0;
+    long int t_hours = 0;
 
     /* These program variables hold the time and depth. */
     double times[N_TIME], nz1s[N_NZ1]; 
@@ -69,6 +96,7 @@ int main (int argc, char *argv[]){
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
     /* VARIABLES DEFINE END*/
+    
 
     /* Open the file. */
     if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid)))
@@ -114,21 +142,66 @@ int main (int argc, char *argv[]){
     int thread_count;
 #pragma omp parallel
     thread_count = omp_get_num_threads();
+    if (rank == 0)
+        {
+            printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
+            printf("Number of threads: %d \n", thread_count);
+            gettimeofday(&t_timer1_start, NULL); //start timer of rank0
+        }
     /* sum matrix */
     static float sum_u_speed[GRID_POINTS] = {0};
     for (rec = rank * levels_per_proc; rec < limit; rec++){
+        gettimeofday(&t_timer2_start, NULL); //start reading timer
         start[1] = rec;
         if ((retval = nc_get_vara_float(ncid, unod_id, start, 
 				      count, &u_speed[0])))
             ERR(retval);
-        #  pragma omp parallel for num_threads(thread_count)private(i )
+        gettimeofday(&t_timer2_finish, NULL);
+        /* calculate the time take for reading*/
+        t_nc_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
+        t_nc_reading_time_sum+=t_nc_reading_time;
+        gettimeofday(&t_timer2_start, NULL); //start reading timer
+#  pragma omp parallel for num_threads(thread_count)private(i )
         for (i = 0; i < GRID_POINTS;i++){
             sum_u_speed[i] += u_speed[i]/ N_NZ1;
         }
+        gettimeofday(&t_timer2_finish, NULL);
+        t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
+        t_threading_reading_time_sum+=t_threading_reading_time;
     }
-    //pointer to sum matrix, to consider the matrix as an array.
-    MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rank==0){
+#ifdef DEBUG
+    printf("The processes %d took %lf seconds to read all the nc data \n",rank,t_nc_reading_time_sum);
+    printf("The processes %d took %lf seconds to thread \n",rank,t_threading_reading_time_sum);
+#endif
+    gettimeofday(&t_timer2_start, NULL); // start communication timer
+    MPI_Reduce(&t_nc_reading_time_sum, &t_nc_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
+    gettimeofday(&t_timer2_finish, NULL);
+    t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
+
+    if (rank == 0)
+    {
+        gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
+        t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
+        convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do Nc read is %lf seconds\n",t_nc_reading_time_Totalsum);
+        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+        /**/
+        convert_time_hour_sec(t_threading_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do the threading is %lf seconds\n",t_threading_reading_time_Totalsum);
+        printf("The time taken to do the threading is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        /**/
+        convert_time_hour_sec(t_comm_time,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do 3 MPI REDUCE is %lfseconds \n",t_comm_time);
+        printf("The time taken to do 3 MPI REDUCE is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        /**/
+        convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
+        printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+
+        gettimeofday(&t_timer2_start, NULL); // start communication timer
+
         /* Create the file. */
         int y = 1;                                            // indicating time step 1 
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
@@ -156,17 +229,35 @@ int main (int argc, char *argv[]){
             ERR(retval);
         if ((retval = nc_put_var_float(ncid2, var_new_id, &final_averages[0])))
             ERR(retval);
-
+        free(final_averages);
         /* Close the file. This frees up any internal netCDF resources
-        * associated with the file, and flushes any buffers. */
+         * associated with the file, and flushes any buffers. */
         if ((retval = nc_close(ncid2)))
             ERR(retval);
+        gettimeofday(&t_timer2_finish, NULL);
+        double temp=time_diff(&t_timer2_start, &t_timer2_finish);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to wrtie the file is %lf seconds\n",temp);
+        printf("The time taken to wrtie the file is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
     }
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);
-    printf("*** SUCCESS reading example unod.fesom.2010.nc!\n");
+    printf("This process has about to close right:on this node %s,with this ranking %d out of %d processes \n",
+           processor_name, rank, size);
     MPI_Finalize();
     return 0;
 }
 
+double time_diff(struct timeval *start, struct timeval *end)
+{ 
+    // long tv_sec;                /* seconds */
+    // long tv_usec;               /* microseconds */ 
+    return ((end->tv_sec - start->tv_sec) +  1e-6 *(end->tv_usec - start->tv_usec));
+}
+void convert_time_hour_sec(double seconds,long int *h,long int *m,long int *s)
+{ 	
+    *h = ((long int) seconds/3600); 
+	*m = ((long int) seconds -(3600 * ( *h )))/60;
+    *s = ((long int) seconds -(3600 * ( *h ))-(( *m ) * 60));
+}
