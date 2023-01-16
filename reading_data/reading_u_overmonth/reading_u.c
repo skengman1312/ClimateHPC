@@ -17,7 +17,7 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 #define TIME "time"  // the variable is called time in the file. I knew it using ncdump command
 #define UNOD "unod"  // the variable is called unod in the file. I knew it using ncdump command
 #define N_NZ1 69            // the variable nz1 has 69 entries
-#define N_TIME 12            // the variable time has 12 entries
+#define N_TIME 1            // the variable time has 12 entries
 #define NDIMS 3
 #define GRID_POINTS 8852366
 #define DEBUG 1
@@ -76,7 +76,7 @@ int main (int argc, char *argv[]){
     int j;
 
     /* Variables related to OPmp*/
-    // int thread_count;
+    int thread_count;
     int Time_per_proc;
     int limit;
     /*Time variables to be used to see how much time each process takes*/
@@ -131,10 +131,12 @@ int main (int argc, char *argv[]){
 
     /*pointer of type float*/
     /*I want try to read full time stamp at once*/
-    float **u_speed = malloc(sizeof(float *) * N_NZ1);;
+    float **u_speed = malloc(sizeof(float *) * N_NZ1);
+    // static float u_speed[N_NZ1][GRID_POINTS];
     // u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
     for (int i = 0; i < N_NZ1; i++)
         u_speed[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
+    // static float final_averages[N_TIME][GRID_POINTS];
 
     float **final_averages = malloc(sizeof(float *) * N_TIME);
     for (int i = 0; i < N_TIME; i++)
@@ -161,8 +163,8 @@ int main (int argc, char *argv[]){
     }
     /* Instialzing between the time variables */
     /*Get the number of threads*/
-    // #pragma omp parallel 
-    // thread_count = omp_get_num_threads();
+    #pragma omp parallel 
+    thread_count = omp_get_num_threads();
     count[0] = 1;/*1 time*/
     count[1] = N_NZ1;/*ALL levels*/
     count[2] = GRID_POINTS;/*all gridpoints*/
@@ -172,12 +174,12 @@ int main (int argc, char *argv[]){
     if (rank == 0)
         {
             printf("Number of processes: %d (Time being read for each process: %d)\n", size, Time_per_proc);
-            // printf("Number of threads: %d \n", thread_count);
+            printf("Number of threads: %d \n", thread_count);
             gettimeofday(&t_timer1_start, NULL); //start timer of rank0
         }
     for (rec = rank * Time_per_proc; rec < limit; rec++){
             gettimeofday(&t_timer2_start, NULL); //start reading timer
-            start[1] = rec;
+            start[0] = rec;
             if ((retval = nc_get_vara_float(ncid, unod_id, start, 
                         count, &u_speed[0][0])))
                 ERR(retval);
@@ -186,7 +188,7 @@ int main (int argc, char *argv[]){
             t_nc_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_nc_reading_time_sum+=t_nc_reading_time;
             gettimeofday(&t_timer2_start, NULL); //start reading timer
-    // #  pragma omp parallel for num_threads(thread_count)private(i,j )
+    #  pragma omp parallel for num_threads(thread_count)private(i,j )
             for (i = 0; i < N_NZ1;i++){
                 for (j = 0; j < GRID_POINTS;j++){
                     sum_u_speed[j] += u_speed[i][j]/ N_NZ1;
@@ -233,7 +235,6 @@ int main (int argc, char *argv[]){
     if (rank == 0)
     {
         /* Create the file. */
-        // int y[12] = {1,2,3,4,5,6,7,8,9,10,11,12};                                            // indicating time step 1 
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
             ERR(retval);
         /*define dimension*/

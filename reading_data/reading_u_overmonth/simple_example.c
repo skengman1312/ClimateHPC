@@ -6,12 +6,22 @@
 
 
 /*
-mpicc -std=c99 -g -Wall -fopenmp  -o testing_idea_2.out testing_idea_2.c -lm 
+mpicc -std=c99 -g -Wall -fopenmp  -o simple_example.out simple_example.c -lm 
 
- gcc -g -Wall -fopenmp -o testing_idea testing_idea.c -lm
-./testing_idea 5
+ gcc -g -Wall -fopenmp -o simple_example simple_example.c -lm
+./simple_example 5
 */
 // echo |cpp -fopenmp -dM |grep -i open
+void mymethod(int * sum_u_speed,int **arr_dim, int rec,int rank,int thread_count){
+    int i = 0;
+    #pragma omp parallel for num_threads(thread_count) private(i)
+    for (i = 0; i < 8; i++)
+    {
+        sum_u_speed[i] += arr_dim[rec][i];
+        int my_rank = omp_get_thread_num(); // get the number of the thread
+        printf("Hello from thread %d containing %d from processes %d\n", my_rank, sum_u_speed[i], rank);
+    }
+}
 int main(int argc, char* argv[]){
     MPI_Init(&argc, &argv);
     int size;
@@ -39,12 +49,7 @@ int main(int argc, char* argv[]){
     in the end of loop i would have added the two arrays togather and i have 1 insgle array 
     */
     for (rec = rank * levels_per_proc; rec < limit; rec++){
-        # pragma omp parallel for num_threads(thread_count) private(i) 
-        for (i = 0; i < 8; i++){
-            sum_u_speed[i] += arr_dim[rec][i];
-            int my_rank = omp_get_thread_num();// get the number of the thread
-            printf("Hello from thread %d containing %d from processes %d\n", my_rank, sum_u_speed[i],rank);
-        }
+        mymethod(sum_u_speed,arr_dim,rec,rank,thread_count);
     }
     MPI_Reduce(sum_u_speed, final_averages,8, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rank==0){
