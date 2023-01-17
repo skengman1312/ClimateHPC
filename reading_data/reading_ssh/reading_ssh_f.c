@@ -28,7 +28,7 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 
 /*MACROS end*/
 
-float * average(float local_ssh[][GRID_POINTS], int timeframe);
+void average(float local_ssh[][GRID_POINTS], int timeframe, float rbuff[GRID_POINTS]);
 
 int main () {
     // Initialize the MPI environment. The two arguments to MPI Init are not
@@ -109,8 +109,10 @@ int main () {
                                             count, &ssh[i][0]))) ERR(retval);
 
         }
-        printf("%lf\n", ssh[0+30][0]);
-        printf("%lf\n", ssh[29+30][8852365]);
+        printf("ssh[0][0] : %lf\n", ssh[0][0]);
+        printf("ssh[29][8852365] : %lf\n", ssh[29][8852365]);
+        printf("ssh[0+30][0] : %lf\n", ssh[0+30][0]);
+        printf("ssh[29+30][8852365] : %lf\n", ssh[29+30][8852365]);
         /*CLOSING FILE*/
         if ((retval = nc_close(ncid))) ERR(retval);
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
@@ -119,14 +121,22 @@ int main () {
     }
 
 
-    float * a;
-    a = average(ssh+30, 30);
-    printf("a : %lf\n", a[0])
+    float a[2][GRID_POINTS];
+//    for (int i = 0; i < ; ++i) {
+//
+//    }
+    for (int i = 0; i < 2; ++i) {
+        printf("Iteration number %i\n",i);
+        average(ssh+(30*i), 30, a[i]);
+    }
+    if (world_rank == 0){
+        printf("a[0][0] : %lf\n", a[0][0]);
+        printf("a[1][0] : %lf\n", a[1][0]);}
     MPI_Finalize();
     return 0;
 }
 
-float * average(float local_ssh[][GRID_POINTS], int timeframe ){
+void  average(float local_ssh[][GRID_POINTS], int timeframe, float rbuff[GRID_POINTS]){
     // /* VARIABLES DEFINE START*/
     // get the number of processes
     int world_size;
@@ -143,17 +153,17 @@ float * average(float local_ssh[][GRID_POINTS], int timeframe ){
 
     // receive buffer
     float rec[local_dim[0]][local_dim[1]];
-    float loc_avg[local_dim[1]];
+    float loc_avg[GRID_POINTS] = {0};
     //float *avg = malloc(sizeof(local_dim[1])
-    static float avg[GRIDPOINTS];
+    float avg[GRID_POINTS] = {0};
     int sendcnt = local_dim[0] * local_dim[1]; /* how many items are sent to each process */
     int recvcnt = local_dim[0] * local_dim[1];
 
-    printf("local ssh first element: %lf\n", local_ssh[0][0]);
+    // printf("local ssh first element: %lf\n", local_ssh[0][0]);
     // MPI call and functional part
     MPI_Scatter(local_ssh, sendcnt, MPI_FLOAT,
                 rec, recvcnt, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    printf("My rank is %i\n", world_rank);
+
     // loading the sum in a vector of size N-points
     for (int i = 0; i < local_dim[1]; i++){
         for (int j = 0; j < local_dim[0]; j++) {
@@ -171,13 +181,13 @@ float * average(float local_ssh[][GRID_POINTS], int timeframe ){
 
     // reduce with sum operator
     MPI_Reduce(loc_avg, avg, local_dim[1], MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-
+    // printf("My rank is %i\n", world_rank);
     // averaging the results of the several threads to get as single average vector
     for (int i = 0; i < local_dim[1]; ++i) {
-        avg[i] = avg[i]/world_size;
+        rbuff[i] = avg[i]/world_size;
     }
     if (world_rank == 0)
-        printf("I am proc 0 and the collected avg is %g, %g, %g\n", avg[0], avg[1], avg[2]);
+        printf("I am proc 0 and the collected avg is %g, %g, %g\n", rbuff[0], rbuff[1], rbuff[2]);
 
-    return avg;
+    return;
 }
