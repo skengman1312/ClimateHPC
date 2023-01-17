@@ -119,9 +119,9 @@ int main () {
     }
 
 
-
-    average(ssh+30, 30);
-
+    float * a;
+    a = average(ssh+30, 30);
+    printf("a : %lf\n", a[0])
     MPI_Finalize();
     return 0;
 }
@@ -144,8 +144,8 @@ float * average(float local_ssh[][GRID_POINTS], int timeframe ){
     // receive buffer
     float rec[local_dim[0]][local_dim[1]];
     float loc_avg[local_dim[1]];
-    float *avg = malloc(sizeof(local_dim[1])
-    float avg[local_dim[1]];
+    //float *avg = malloc(sizeof(local_dim[1])
+    static float avg[GRIDPOINTS];
     int sendcnt = local_dim[0] * local_dim[1]; /* how many items are sent to each process */
     int recvcnt = local_dim[0] * local_dim[1];
 
@@ -179,5 +179,5 @@ float * average(float local_ssh[][GRID_POINTS], int timeframe ){
     if (world_rank == 0)
         printf("I am proc 0 and the collected avg is %g, %g, %g\n", avg[0], avg[1], avg[2]);
 
-    return 0;
+    return avg;
 }
