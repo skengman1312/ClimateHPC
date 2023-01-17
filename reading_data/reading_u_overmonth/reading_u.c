@@ -36,6 +36,8 @@ double time_diff(struct timeval *start, struct timeval *end);
 /*This is a function that measures time in minutes hours and seconds*/
 void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
 
+void Check_for_error(int local_ok, char fname[], char message[], 
+      MPI_Comm comm);
 /*FUNCTIONS end*/
 
 int main (int argc, char *argv[]){
@@ -74,6 +76,7 @@ int main (int argc, char *argv[]){
     int rec;
     int i;
     int j;
+    int local_ok;
 
     /* Variables related to OPmp*/
     int thread_count;
@@ -131,19 +134,20 @@ int main (int argc, char *argv[]){
 
     /*pointer of type float*/
     /*I want try to read full time stamp at once*/
-    float **u_speed = malloc(sizeof(float *) * N_NZ1);
-    // static float u_speed[N_NZ1][GRID_POINTS];
+    static float u_speed[N_NZ1][GRID_POINTS]={0};
     // u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
-    for (int i = 0; i < N_NZ1; i++)
-        u_speed[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
-    // static float final_averages[N_TIME][GRID_POINTS];
-
-    float **final_averages = malloc(sizeof(float *) * N_TIME);
-    for (int i = 0; i < N_TIME; i++)
-        final_averages[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
     
-    float * sum_u_speed;
-    sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
+    // float **u_speed = malloc(sizeof(float *) * N_NZ1);
+    // for (int i = 0; i < N_NZ1; i++)
+    //     u_speed[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
+
+
+    static float final_averages[N_TIME][GRID_POINTS]={0};
+    /*DYBAMIC arrays*/
+    // float **final_averages = malloc(sizeof(float *) * N_TIME);
+    // for (int i = 0; i < N_TIME; i++)
+    //     final_averages[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
+
     /*DYNAMIC VARIABLES_intializaiton*/
 
     /* Open the file. */
@@ -178,7 +182,13 @@ int main (int argc, char *argv[]){
             gettimeofday(&t_timer1_start, NULL); //start timer of rank0
         }
     for (rec = rank * Time_per_proc; rec < limit; rec++){
-            gettimeofday(&t_timer2_start, NULL); //start reading timer
+            local_ok = 1;
+            static float sum_u_speed[GRID_POINTS]={0};
+            // float *sum_u_speed;
+            // sum_u_speed = calloc(GRID_POINTS, sizeof(float));
+            if (sum_u_speed == NULL) local_ok = 0;
+            Check_for_error(local_ok, "Allocate_arrays","Can't allocate local arrays", MPI_COMM_WORLD);
+            gettimeofday(&t_timer2_start, NULL); // start reading timer
             start[0] = rec;
             if ((retval = nc_get_vara_float(ncid, unod_id, start, 
                         count, &u_speed[0][0])))
@@ -188,16 +198,19 @@ int main (int argc, char *argv[]){
             t_nc_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_nc_reading_time_sum+=t_nc_reading_time;
             gettimeofday(&t_timer2_start, NULL); //start reading timer
-    #  pragma omp parallel for num_threads(thread_count)private(i,j )
+    // #  pragma omp parallel for num_threads(thread_count)private(i,j )
             for (i = 0; i < N_NZ1;i++){
                 for (j = 0; j < GRID_POINTS;j++){
                     sum_u_speed[j] += u_speed[i][j]/ N_NZ1;
                 }
             }
             gettimeofday(&t_timer2_finish, NULL);
+            MPI_Gather(sum_u_speed,GRID_POINTS,MPI_FLOAT,final_averages[rec],GRID_POINTS,MPI_FLOAT,0,MPI_COMM_WORLD);
+            /*DYNAMIC*/
+            // free(sum_u_speed);
             t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_threading_reading_time_sum+=t_threading_reading_time;
-        }
+    }
     #ifdef DEBUG
         printf("The processes %d took %lf seconds to read all the nc data \n",rank,t_nc_reading_time_sum);
         printf("The processes %d took %lf seconds to thread \n",rank,t_threading_reading_time_sum);
@@ -205,10 +218,10 @@ int main (int argc, char *argv[]){
     gettimeofday(&t_timer2_start, NULL); // start communication timer
     MPI_Reduce(&t_nc_reading_time_sum, &t_nc_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS * N_TIME, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
+    // MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS * N_TIME, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
     gettimeofday(&t_timer2_finish, NULL);
     t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
-    free(sum_u_speed);    
+    // free(sum_u_speed);    
 
     if (rank == 0){ 
         gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
@@ -229,9 +242,11 @@ int main (int argc, char *argv[]){
         printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
         printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
     }
-    for (int i = 0; i < N_TIME; i++){
-            free(u_speed[i]);      
-    }
+    /*DYNAMIC arrrary*/
+    // for (int i = 0; i < N_TIME; i++){
+    //         free(u_speed[i]);      
+    // }
+    // free(u_speed);    
     if (rank == 0)
     {
         /* Create the file. */
@@ -269,15 +284,16 @@ int main (int argc, char *argv[]){
         count_1[1] = GRID_POINTS;
         start_1[1] = 0;
 
-        for (rec = 0; rec < N_TIME; rec++)
-        {
-        start_1[0] = rec;
-        if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&final_averages[0][0])))
+        for (rec = 0; rec < N_TIME; rec++){
+            start_1[0] = rec;
+            if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&final_averages[0][0])))
 	            ERR(retval);
         }
-        for (int i = 0; i < N_TIME; i++){
-            free(final_averages[i]);      
-        }
+        /*DYNAMICS*/
+        // for (int i = 0; i < N_TIME; i++){
+        //     free(final_averages[i]);      
+        // }
+        // free(final_averages);    
         if ((retval = nc_close(ncid2)))
             ERR(retval);
         gettimeofday(&t_timer2_finish, NULL);
@@ -309,3 +325,23 @@ void convert_time_hour_sec(double seconds,long int *h,long int *m,long int *s)
 	*m = ((long int) seconds -(3600 * ( *h )))/60;
     *s = ((long int) seconds -(3600 * ( *h ))-(( *m ) * 60));
 }
+void Check_for_error(
+      int       local_ok   /* in */, 
+      char      fname[]    /* in */,
+      char      message[]  /* in */, 
+      MPI_Comm  comm       /* in */) {
+   int ok;
+
+   MPI_Allreduce(&local_ok, &ok, 1, MPI_INT, MPI_MIN, comm);
+   if (ok == 0) {
+      int my_rank;
+      MPI_Comm_rank(comm, &my_rank);
+      if (my_rank == 0) {
+         fprintf(stderr, "Proc %d > In %s, %s\n", my_rank, fname, 
+               message);
+         fflush(stderr);
+      }
+      MPI_Finalize();
+      exit(-1);
+   }
+}  /* Check_for_error */
