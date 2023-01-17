@@ -8,9 +8,7 @@
 #include<mpi.h>
 #include <string.h> // needed for memcpy
 
-void get2DArray(int twoDArray[5]){
-    // code to fill 2D array
-}
+
 void stupid_pietro(int twoDarray[5], int factor);
 
 
@@ -34,13 +32,15 @@ void stupid_pietro(int twoDarray[5], int factor);
          printf("element of both arrays: %d, %d\n", threeDArray[1][i], twoDArray[i]);
 
      }
-     for (int i = 0; i < 2; ++i) {
+
+     stupid_pietro(threeDArray[2], 3);
+
+     for (int i = 0; i < 3; ++i) {
          for (int j = 0; j < 5; ++j) {
              printf("element of 3d array: %d\n", threeDArray[i][j]);
          }
      }
      return 0;
-
  }
 
  void stupid_pietro(int twoDarray[5], int factor){
