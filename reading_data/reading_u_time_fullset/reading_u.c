@@ -68,11 +68,14 @@ int main (int argc, char *argv[]){
     // int time_var_new_id;
     int var_new_id;
     int rec_dimid;
+    double temp;
     /*Time variables to be used to see how much time each process takes*/
     struct timeval t_timer1_start;/*timer for process 0*/
     struct timeval t_timer1_finish;
     struct timeval t_timer2_start;
     struct timeval t_timer2_finish;
+    struct timeval t_timer3_start;
+    struct timeval t_timer3_finish;
     double t_nc_reading_time ;
     double t_threading_reading_time ;
     double t_nc_reading_time_sum ;
@@ -121,10 +124,12 @@ int main (int argc, char *argv[]){
         ERR(retval);
 
     /* Get the varid of the velocity netCDF variable. */
+/*TIME 3 START*/
     if ((retval = nc_inq_varid(ncid, UNOD, &unod_id)))
             ERR(retval);
-
-    
+    if (rank == 0){
+        gettimeofday(&t_timer3_start, NULL); //start timer of rank0
+    }
     /*LOOOPING variables*/
     int rec;
     int i;
@@ -147,8 +152,9 @@ int main (int argc, char *argv[]){
     count[1] = 1;/*1 level*/
     count[2] = GRID_POINTS;/*all gridpoints*/
     // start[0] = k;
-    // start[1] = 0;
+    start[1] = 0;
     start[2] = 0;
+
     /* end of setup of NetCDF reading */
     for (k = 0;k<N_TIME; k++){
         start[0] = k;
@@ -167,25 +173,30 @@ int main (int argc, char *argv[]){
         {
             printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
             printf("Number of threads: %d \n", thread_count);
+/*TIME START T1*/
             gettimeofday(&t_timer1_start, NULL); //start timer of rank0
         }
         /* sum matrix */
         for (rec = rank * levels_per_proc; rec < limit; rec++){
+/*TIME START T2*/
             gettimeofday(&t_timer2_start, NULL); //start reading timer
             start[1] = rec;
             if ((retval = nc_get_vara_float(ncid, unod_id, start, 
                         count, &u_speed[0])))
                 ERR(retval);
             gettimeofday(&t_timer2_finish, NULL);
+/*TIME END T2*/
             /* calculate the time take for reading*/
             t_nc_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_nc_reading_time_sum+=t_nc_reading_time;
+/*TIME START T2*/
             gettimeofday(&t_timer2_start, NULL); //start reading timer
     #  pragma omp parallel for num_threads(thread_count)private(i )
             for (i = 0; i < GRID_POINTS;i++){
                 sum_u_speed[i] += u_speed[i]/ N_NZ1;
             }
             gettimeofday(&t_timer2_finish, NULL);
+/*TIME END T2*/
             t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_threading_reading_time_sum+=t_threading_reading_time;
         }
@@ -193,15 +204,18 @@ int main (int argc, char *argv[]){
         printf("The processes %d took %lf seconds to read all the nc data \n",rank,t_nc_reading_time_sum);
         printf("The processes %d took %lf seconds to thread \n",rank,t_threading_reading_time_sum);
     #endif
+/*TIME START T2*/
     gettimeofday(&t_timer2_start, NULL); // start communication timer
     MPI_Reduce(&t_nc_reading_time_sum, &t_nc_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(sum_u_speed, final_averages[k],GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
     gettimeofday(&t_timer2_finish, NULL);
+/*TIME END T2*/
     t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
     free(sum_u_speed);    
     if (rank == 0){ 
         gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
+/*TIME END T1*/
         t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
         convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
         printf("The time taken to do Nc read is %lf seconds\n",t_nc_reading_time_Totalsum);
@@ -222,11 +236,24 @@ int main (int argc, char *argv[]){
     }
     }
 
+    if (rank == 0){
+        gettimeofday(&t_timer3_finish, NULL);
+/*TIME END 3*/
+
+        temp=time_diff(&t_timer3_start, &t_timer3_finish);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to paralize everything for all of the files %lf seconds\n",temp);
+        printf("The time taken to paralize everything for all of the files %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+    }
+    
     free(u_speed);    
+    
     if (rank == 0)
     {
         /* Create the file. */
         // int y[12] = {1,2,3,4,5,6,7,8,9,10,11,12};                                            // indicating time step 1 
+/*TIME START 2*/
+        gettimeofday(&t_timer2_start, NULL); // start communication timer
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
             ERR(retval);
         /*define dimension*/
@@ -267,19 +294,14 @@ int main (int argc, char *argv[]){
         if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&final_averages[0][0])))
 	            ERR(retval);
         }
-        // int g;
-        // for (g = 0; g < N_TIME; g++)
-        // {
-        //     if ((retval = nc_put_var_float(ncid2, var_new_id, final_averages[g])))
-        //         ERR(retval);
-        // }
-        for (int i = 0; i < N_TIME; i++)
-            free(final_averages[i]);        /* Close the file. This frees up any internal netCDF resources
-         * associated with the file, and flushes any buffers. */
+        gettimeofday(&t_timer2_finish, NULL);
+/*TIME END 2*/
+        for (int i = 0; i < N_TIME; i++){
+            free(final_averages[i]);      
+        }
         if ((retval = nc_close(ncid2)))
             ERR(retval);
-        gettimeofday(&t_timer2_finish, NULL);
-        double temp=time_diff(&t_timer2_start, &t_timer2_finish);
+        temp=time_diff(&t_timer2_start, &t_timer2_finish);
         convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
         printf("The time taken to wrtie the file is %lf seconds\n",temp);
         printf("The time taken to wrtie the file is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
