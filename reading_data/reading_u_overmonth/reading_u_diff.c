@@ -214,50 +214,7 @@ int main (int argc, char *argv[]){
                 }
             }
             gettimeofday(&t_timer2_finish, NULL);
-            MPI_Gather(sum_u_speed,GRID_POINTS,MPI_FLOAT,final_averages[rec],GRID_POINTS,MPI_FLOAT,0,MPI_COMM_WORLD);
-            /*DYNAMIC*/
-            // free(sum_u_speed);
-            t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
-            t_threading_reading_time_sum+=t_threading_reading_time;
-    }
-    #ifdef DEBUG
-        printf("The processes %d took %lf seconds to read all the nc data \n",rank,t_nc_reading_time_sum);
-        printf("The processes %d took %lf seconds to thread \n",rank,t_threading_reading_time_sum);
-    #endif
-    gettimeofday(&t_timer2_start, NULL); // start communication timer
-    MPI_Reduce(&t_nc_reading_time_sum, &t_nc_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    // MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS * N_TIME, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
-    gettimeofday(&t_timer2_finish, NULL);
-    t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
-    // free(sum_u_speed);    
 
-    if (rank == 0){ 
-        gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
-        t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
-        convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to do Nc read is %lf seconds\n",t_nc_reading_time_Totalsum);
-        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
-        /**/
-        convert_time_hour_sec(t_threading_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to do the threading is %lf seconds\n",t_threading_reading_time_Totalsum);
-        printf("The time taken to do the threading is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-        /**/
-        convert_time_hour_sec(t_comm_time,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to do 3 MPI REDUCE is %lfseconds \n",t_comm_time);
-        printf("The time taken to do 3 MPI REDUCE is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-        /**/
-        convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
-        printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-    }
-    /*DYNAMIC arrrary*/
-    // for (int i = 0; i < N_TIME; i++){
-    //         free(u_speed[i]);      
-    // }
-    // free(u_speed);    
-    if (rank == 0)
-    {
         /* Create the file. */
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
             ERR(retval);
@@ -310,7 +267,103 @@ int main (int argc, char *argv[]){
         convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
         printf("The time taken to wrtie the file is %lf seconds\n",temp);
         printf("The time taken to wrtie the file is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+            // MPI_Gather(sum_u_speed,GRID_POINTS,MPI_FLOAT,final_averages[rec],GRID_POINTS,MPI_FLOAT,0,MPI_COMM_WORLD);
+            /*DYNAMIC*/
+            // free(sum_u_speed);
+            t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
+            t_threading_reading_time_sum+=t_threading_reading_time;
     }
+    #ifdef DEBUG
+        printf("The processes %d took %lf seconds to read all the nc data \n",rank,t_nc_reading_time_sum);
+        printf("The processes %d took %lf seconds to thread \n",rank,t_threading_reading_time_sum);
+    #endif
+    gettimeofday(&t_timer2_start, NULL); // start communication timer
+    MPI_Reduce(&t_nc_reading_time_sum, &t_nc_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    // MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS * N_TIME, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
+    gettimeofday(&t_timer2_finish, NULL);
+    t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
+    // free(sum_u_speed);    
+
+    if (rank == 0){ 
+        gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
+        t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
+        convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do Nc read is %lf seconds\n",t_nc_reading_time_Totalsum);
+        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+        /**/
+        convert_time_hour_sec(t_threading_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do the threading is %lf seconds\n",t_threading_reading_time_Totalsum);
+        printf("The time taken to do the threading is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        /**/
+        convert_time_hour_sec(t_comm_time,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do 3 MPI REDUCE is %lfseconds \n",t_comm_time);
+        printf("The time taken to do 3 MPI REDUCE is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        /**/
+        convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
+        printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+    }
+    /*DYNAMIC arrrary*/
+    // for (int i = 0; i < N_TIME; i++){
+    //         free(u_speed[i]);      
+    // }
+    // free(u_speed);    
+    // if (rank == 0)
+    // {
+    //     /* Create the file. */
+    //     if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
+    //         ERR(retval);
+    //     /*define dimension*/
+    //     // if ((retval = nc_def_dim(ncid2, TIME, 12, &time_new_id)))
+    //     //     ERR(retval);
+    //     if ((retval = nc_def_dim(ncid2, TIME, NC_UNLIMITED, &rec_dimid)))
+    //         ERR(retval);
+    //     if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &gp_new_id)))
+    //         ERR(retval);
+    //     int dimid[2];
+    //     dimid[0]=rec_dimid;
+    //     dimid[1]=gp_new_id;
+    //     /*define variable*/
+    //     if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, 2, dimid, &var_new_id)))// define the varibael
+    //         ERR(retval);
+    //     // if ((retval = nc_def_var(ncid2, "time", NC_INT, 1, &time_new_id, &time_var_new_id)))// define the varibael
+    //     //     ERR(retval);
+    //     // if ((retval = nc_put_att_text(ncid2, time_var_new_id, UNITS, 
+	// 	// 		 strlen(UNITS_time), UNITS_time)))
+    //     //     ERR(retval);
+    //     if ((retval = nc_put_att_text(ncid2, var_new_id, UNITS, 
+	// 			 strlen(UNITS_speed), UNITS_speed)))
+    //         ERR(retval);
+    //     /* End define mode. */
+    //     if ((retval = nc_enddef(ncid2)))
+    //         ERR(retval);
+    //     // if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y[0])))
+    //     //     ERR(retval);
+    //     size_t start_1[2];
+    //     size_t count_1[2];
+    //     count_1[0] = 1;
+    //     count_1[1] = GRID_POINTS;
+    //     start_1[1] = 0;
+
+    //     for (rec = 0; rec < N_TIME; rec++){
+    //         start_1[0] = rec;
+    //         if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&final_averages[0][0])))
+	//             ERR(retval);
+    //     }
+    //     /*DYNAMICS*/
+    //     // for (int i = 0; i < N_TIME; i++){
+    //     //     free(final_averages[i]);      
+    //     // }
+    //     // free(final_averages);    
+    //     if ((retval = nc_close(ncid2)))
+    //         ERR(retval);
+    //     gettimeofday(&t_timer2_finish, NULL);
+    //     double temp=time_diff(&t_timer2_start, &t_timer2_finish);
+    //     convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+    //     printf("The time taken to wrtie the file is %lf seconds\n",temp);
+    //     printf("The time taken to wrtie the file is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+    // }
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);

@@ -191,7 +191,7 @@ int main (int argc, char *argv[]){
             t_nc_reading_time_sum+=t_nc_reading_time;
 /*TIME START T2*/
             gettimeofday(&t_timer2_start, NULL); //start reading timer
-    #  pragma omp parallel for num_threads(thread_count)private(i )
+    // #  pragma omp parallel for num_threads(thread_count)private(i )
             for (i = 0; i < GRID_POINTS;i++){
                 sum_u_speed[i] += u_speed[i]/ N_NZ1;
             }
@@ -291,7 +291,7 @@ int main (int argc, char *argv[]){
         for (rec = 0; rec < N_TIME; rec++)
         {
         start_1[0] = rec;
-        if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&final_averages[0][0])))
+        if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&final_averages[rec][0])))
 	            ERR(retval);
         }
         gettimeofday(&t_timer2_finish, NULL);
