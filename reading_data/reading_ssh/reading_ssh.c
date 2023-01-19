@@ -145,7 +145,7 @@ int main () {
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
         ERR(retval);
         /*define dimension*/
-        if ((retval = nc_def_dim(ncid2, TIME, 1, &time_new_id)))
+        if ((retval = nc_def_dim(ncid2, TIME,  NC_UNLIMITED, &time_new_id)))
         ERR(retval);
         if ((retval = nc_def_dim(ncid2, SSH, GRID_POINTS, &gp_new_id)))
         ERR(retval);
