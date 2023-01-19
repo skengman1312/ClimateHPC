@@ -52,24 +52,25 @@ def map_plot(df, grid, filename="map.png"):
     plt.show()
 
 
-
 def animated_plot(df, grid):
     fig, ax = plt.subplots()
+    world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
 
     def animate(i):
-        df_grid = pd.concat([grid.reset_index(drop=True), df.loc[[i]].reset_index(drop=True)], axis=1, ignore_index=False)
+        ax.clear()
+        world.plot(color='white', edgecolor='black', ax=ax)
+        df_grid = pd.concat([grid.reset_index(drop=True), df.loc[[i]].reset_index(drop=True)], axis=1,
+                            ignore_index=False)
+        ax.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3, vmin=-1.90, vmax=2)
+        # plt.colorbar()
+        plt.title('t = %i: ' % (i+1))
 
-        world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
-        ax = world.plot(color='white', edgecolor='black')
-        ax.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3)
-        plt.title('t = %i: ' % (i))
+    anim = animation.FuncAnimation(fig, animate, 12, interval=1000, blit=False)
+    anim.save('us.gif', writer='imagemagick', fps=1, dpi=1000)
+    # plt.show()
 
-    anim = animation.FuncAnimation(fig, animate, 2, interval=1000, blit=False)
-    anim.save('us.gif', writer='imagemagick', fps=1)
-    plt.show()
 
 if __name__ == "__main__":
-
     ssh = loadNC('../reading_ssh/map_summarized.nc')
 
     # ssh = loadNC('../map_summarized.nc')
@@ -79,7 +80,12 @@ if __name__ == "__main__":
     ssh.rename(columns={"sea_surface_elevation": "ssh"})
     mesh = xr.open_dataset("fesom.mesh.diag.nc")
     grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
+
+    print("min: ", ssh.min())
+    print("max ", ssh.max())
+
     animated_plot(ssh, grid)
+
     #
     # cdata = pd.concat([unod, vnod], axis=1)       #ssh, unod, vnod], axis=1)
     #
