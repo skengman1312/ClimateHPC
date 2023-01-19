@@ -4,7 +4,7 @@ import geopandas
 import seaborn as sns
 import numpy as np
 from sklearn.cluster import KMeans
-
+import matplotlib.animation as animation
 
 # import geoplot
 
@@ -52,36 +52,55 @@ def map_plot(df, grid, filename="map.png"):
     plt.show()
 
 
-ssh = loadNC('../map_summarized.nc')
-unod = loadNC('../reading_u/map_summarized.nc')
-vnod = loadNC("../reading_v/map_summarized_vnod.nc")
-vnod.rename(columns={"speed": "vspeed"}, inplace=True)
-ssh.rename(columns={"sea_surface_elevation": "ssh"})
-mesh = xr.open_dataset("fesom.mesh.diag.nc")
-grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
 
-cdata = pd.concat([unod, vnod], axis=1)       #ssh, unod, vnod], axis=1)
+def animated_plot(df, grid):
+    fig, ax = plt.subplots()
 
-# cdata.drop("time", axis=0)
+    def animate(i):
+        df_grid = pd.concat([grid.reset_index(drop=True), df.loc[[i]].reset_index(drop=True)], axis=1, ignore_index=False)
 
-cdata.reset_index(1, inplace=True)
-cdata.drop("time", axis=1, inplace=True)
-book2 = KMeans(n_clusters=5, random_state=1312, verbose=True).fit_predict(cdata)
-#counts = np.unique(book2.labels_, return_counts=True)
-dbook = pd.DataFrame(book2)
-print(dbook)
-map_plot(dbook, grid, "cluster_map.png")
-print(book2.shape)
-#print(counts)
+        world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
+        ax = world.plot(color='white', edgecolor='black')
+        ax.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3)
+        plt.title('t = %i: ' % (i))
 
+    anim = animation.FuncAnimation(fig, animate, 2, interval=1000, blit=False)
+    anim.save('us.gif', writer='imagemagick', fps=1)
+    plt.show()
 
+if __name__ == "__main__":
 
-# ssh.head(1_000_000).plot()
-# plt.show()
-# print(unod.head(1000))
-# unod.head(1_000_000).plot()
-# plt.show()
-# print(vnod.head(10))
-# map_plot(ssh, grid, filename="shh_map.png")
-# map_plot(unod, grid, filename="unod_map.png")
-# map_plot(vnod, grid, filename="vnod_map.png")
+    ssh = loadNC('../reading_ssh/map_summarized.nc')
+
+    # ssh = loadNC('../map_summarized.nc')
+    # unod = loadNC('../reading_u/map_summarized.nc')
+    # vnod = loadNC("../reading_v/map_summarized_vnod.nc")
+    # vnod.rename(columns={"speed": "vspeed"}, inplace=True)
+    ssh.rename(columns={"sea_surface_elevation": "ssh"})
+    mesh = xr.open_dataset("fesom.mesh.diag.nc")
+    grid = pd.concat([mesh["lon"].to_dataframe(), mesh["lat"].to_dataframe()], axis=1)
+    animated_plot(ssh, grid)
+    #
+    # cdata = pd.concat([unod, vnod], axis=1)       #ssh, unod, vnod], axis=1)
+    #
+    # # cdata.drop("time", axis=0)
+    #
+    # cdata.reset_index(1, inplace=True)
+    # cdata.drop("time", axis=1, inplace=True)
+    # book2 = KMeans(n_clusters=5, random_state=1312, verbose=True).fit_predict(cdata)
+    # #counts = np.unique(book2.labels_, return_counts=True)
+    # dbook = pd.DataFrame(book2)
+    # print(dbook)
+    # map_plot(dbook, grid, "cluster_map.png")
+    # print(book2.shape)
+    # print(counts)
+
+    # ssh.head(1_000_000).plot()
+    # plt.show()
+    # print(unod.head(1000))
+    # unod.head(1_000_000).plot()
+    # plt.show()
+    # print(vnod.head(10))
+    # map_plot(ssh, grid, filename="shh_map.png")
+    # map_plot(unod, grid, filename="unod_map.png")
+    # map_plot(vnod, grid, filename="vnod_map.png")
