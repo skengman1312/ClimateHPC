@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N hyb_4_3
 #PBS -l select=5:ncpus=5:mpiprocs=5:ompthreads=5:mem=4gb 
-#PBS -l walltime=0:05:00
+#PBS -l walltime=0:25:00
 #PBS -j oe
 # set the excution on the short queue
 #PBS -q short_cpuQ
