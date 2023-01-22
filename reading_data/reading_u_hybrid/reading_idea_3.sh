@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -l select=1:ncpus=5:mpiprocs=1:mem=2gb 
-#PBS -N threads_baseline
+#PBS -N threads_runtime
 #PBS -j oe
 #PBS -l walltime=0:05:00
 #PBS -q short_cpuQ
@@ -14,7 +14,7 @@ export THIS_HOST=$(hostname)
 export I_MPI_DEBUG=5
 export I_MPI_PIN_DOMAIN=omp
 export I_MPI_PIN_ORDER=compact
-export OMP_NUM_THREADS=1
+export OMP_NUM_THREADS=4
 export KMP_AFFINITY=verbose,compact
 
 mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o testing_idea.out testing_idea.c -lm 

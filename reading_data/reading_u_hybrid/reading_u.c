@@ -34,7 +34,7 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 We subtract both time instances and we convert final output in seconds*/
 double time_diff(struct timeval * start, struct timeval *end);
 void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
-void threading(float * sum, float levels[][GRID_POINTS], int rank, int size, int levels_per_proc, int thread_count);
+void threading(float * sum, float levels[][GRID_POINTS], int rank, int size, int levels_per_proc);
 void net_write(float * final_averages,int k);
 /*FUNCTIONS end*/
 int main (int argc, char *argv[]){
@@ -70,7 +70,6 @@ int main (int argc, char *argv[]){
     int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
     int sendcounts[size];// for scatterv
     int displs[size];// for scatterv
-    int thread_count;
     double temp;
     double temp2;
     // intializing the arrays
@@ -81,8 +80,6 @@ int main (int argc, char *argv[]){
     sendcounts[size-1] = (N_NZ1-(levels_per_proc*(size-1)))*GRID_POINTS;
     static float u_speed[N_NZ1][GRID_POINTS] = {{0}};
     float levels[levels_per_proc][GRID_POINTS];
-    #pragma omp parallel
-    thread_count = omp_get_num_threads();
     /*Time variables to be used to see how much time each process takes*/
     struct timeval t_timer1_start;/*timer for process 0*/
     struct timeval t_timer1_finish;
@@ -90,6 +87,8 @@ int main (int argc, char *argv[]){
     struct timeval t_timer2_finish;
     struct timeval t_timer3_start;
     struct timeval t_timer3_finish;
+    double t_start = 0;
+    double t_finish = 0;
 
     long int t_seconds = 0;
     long int t_minutes = 0;
@@ -129,7 +128,6 @@ int main (int argc, char *argv[]){
     if (rank == 0)
         {
             printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
-            printf("Number of threads: %d \n", thread_count);
 /*TIME START T3*/
             printf("#########THE START OF COMPUTATION OVER ALL TIMESTEPS#######\n");
             gettimeofday(&t_timer3_start, NULL); //start timer of rank0
@@ -159,10 +157,13 @@ int main (int argc, char *argv[]){
             printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
             #endif
             /*THREADING*/
-            gettimeofday(&t_timer2_start, NULL); // start communication timer
-            threading(sum, levels, rank, size, levels_per_proc, thread_count);
-            gettimeofday(&t_timer2_finish, NULL);
-            temp=time_diff(&t_timer2_start, &t_timer2_finish);
+            // gettimeofday(&t_timer2_start, NULL); // start communication timer
+            t_start = omp_get_wtime();
+            threading(sum, levels, rank, size, levels_per_proc);
+            t_finish = omp_get_wtime();
+            temp = t_finish - t_start;
+            // gettimeofday(&t_timer2_finish, NULL);
+            // temp=time_diff(&t_timer2_start, &t_timer2_finish);
             #ifdef DEBUG
             convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
             printf("The processes %d took %lf seconds to thread \n",rank,temp);
@@ -175,17 +176,20 @@ int main (int argc, char *argv[]){
             MPI_Scatterv(u_speed,sendcounts,displs,MPI_FLOAT,levels,GRID_POINTS*levels_per_proc,MPI_FLOAT,0,MPI_COMM_WORLD);
             gettimeofday(&t_timer2_finish, NULL);
             temp=time_diff(&t_timer2_start, &t_timer2_finish);
-            #ifdef DEBUG
+            #ifdef ALL_procc
             convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
             printf("The processes %d took %lf seconds to scatter \n",rank,temp);
             printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
             #endif
             /*THREADING*/
-            gettimeofday(&t_timer2_start, NULL); // start communication timer
-            threading(sum, levels, rank, size, levels_per_proc, thread_count);
-            gettimeofday(&t_timer2_finish, NULL);
-            temp=time_diff(&t_timer2_start, &t_timer2_finish);
-            #ifdef DEBUG
+            // gettimeofday(&t_timer2_start, NULL); // start communication timer
+            t_start = omp_get_wtime();
+            threading(sum, levels, rank, size, levels_per_proc);
+            t_finish = omp_get_wtime();
+            temp = t_finish - t_start;
+            // gettimeofday(&t_timer2_finish, NULL);
+            // temp=time_diff(&t_timer2_start, &t_timer2_finish);
+            #ifdef ALL_procc
             convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
             printf("The processes %d took %lf seconds to thread \n",rank,temp);
             printf("The process took this time to finish threading %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
@@ -234,10 +238,12 @@ void net_write(float * final_averages, int k){
     if ((retval = nc_put_vara_float(ncid,unod_id, start_1, count_1,&final_averages[0])))ERR_spec(retval);
     if ((retval = nc_close(ncid)))ERR_spec(retval);
 }
-void threading(float * sum,float levels[][GRID_POINTS],int  rank,int size,int levels_per_proc,int  thread_count)
+void threading(float * sum,float levels[][GRID_POINTS],int  rank,int size,int levels_per_proc)
 {
     int boundary;
     int i, j;
+    // double start, finish, elapsed;
+
     if (((rank)-1) == (size))
     {
         boundary = (N_NZ1-(levels_per_proc * ((size)-1)));
@@ -245,11 +251,25 @@ void threading(float * sum,float levels[][GRID_POINTS],int  rank,int size,int le
     else{
         boundary = (levels_per_proc);
     }
-    for (i = 0; i < boundary;i++){
-        for (j = 0; j < GRID_POINTS;j++){
-                sum[j] += levels[i][j]/N_NZ1;
+    // start = omp_get_wtime();
+   #pragma omp parallel
+    {
+        float S_private[GRID_POINTS] = {0};
+        #pragma omp for  private(i, j) 
+            for (i = 0; i < boundary; i++){
+                for (j = 0; j < GRID_POINTS; j++){
+                    S_private[j] += levels[i][j];
+                }
             }
+        #pragma omp critical
+        {
+            for(int n=0; n<GRID_POINTS; ++n) {
+                sum[n] += S_private[n];
+            }
+        }
     }
+    // finish = omp_get_wtime();
+    // elapsed = finish - start;
 }
 double time_diff(struct timeval *start, struct timeval *end)
 { 

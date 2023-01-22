@@ -22,8 +22,12 @@ void convert_time_hour_sec(double seconds,long int *h,long int *m,long int *s)
     *s = ((long int) seconds -(3600 * ( *h ))-(( *m ) * 60));
 }
 void threading(int sum [level], int arr_dim[level][GRIDPOITN],int *thread_count );
-
-int main(int argc, char* argv[]){
+void threading2(int sum[level], int arr_dim[level][GRIDPOITN], int *thread_count);
+void threading3(int sum[level], int arr_dim[level][GRIDPOITN], int *thread_count);
+void threading4(int sum[level], int arr_dim[level][GRIDPOITN], int *thread_count);
+void threading5(int sum[level], int arr_dim[level][GRIDPOITN], int *thread_count);
+int main(int argc, char *argv[])
+{
     // int arr[8]  = {1, 2, 3, 4, 5, 6, 7, 8};
     int arr_dim[level][GRIDPOITN]  = {{1, 2, 3, 4, 5, 6, 7, 8},{1, 2, 3, 4, 5, 6, 7, 8},{1, 2, 3, 4, 5, 6, 7, 8},{1, 2, 3, 4, 5, 6, 7, 8}};
     // struct timeval t_timer1_start;/*timer for process 0*/
@@ -40,7 +44,10 @@ int main(int argc, char* argv[]){
 threadnumb = omp_get_num_threads();
     printf("The number of threads are %d \n",threadnumb);
     // gettimeofday(&t_timer1_start, NULL);
-    threading(sum,arr_dim,&threadnumb);
+    threading2(sum,arr_dim,&threadnumb);
+    threading3(sum,arr_dim,&threadnumb);
+    threading4(sum,arr_dim,&threadnumb);
+    threading5(sum,arr_dim,&threadnumb);
     // gettimeofday(&t_timer1_finish, NULL);
     // t_nc_reading_time = time_diff(&t_timer1_start, &t_timer1_finish);
     // convert_time_hour_sec(t_nc_reading_time,&t_hours,&t_minutes,&t_seconds);
@@ -52,12 +59,12 @@ threadnumb = omp_get_num_threads();
     }
     printf("\n");
      return 0;
- }
+}
 void threading(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_count){
     int i, j;
     double start, finish, elapsed;
     start = omp_get_wtime();
-#pragma omp parallel for collapse(2) default(none) private(i, j)\
+#pragma omp parallel for default(none) private(i, j)\
         shared(sum,arr_dim) 
     for (i = 0; i < level; i++){
         for (j = 0; j < GRIDPOITN; j++){
@@ -67,4 +74,84 @@ void threading(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_count
     finish = omp_get_wtime();
     elapsed = finish - start;
     printf("Elapsed time = %e seconds\n", elapsed);
+}
+void threading4(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_count){
+    int i, j;
+    double start, finish, elapsed;
+    start = omp_get_wtime();
+            for (i = 0; i < level; i++){
+                for (j = 0; j < GRIDPOITN; j++){
+                    sum[j] += arr_dim[i][j];
+                }
+            }
+    finish = omp_get_wtime();
+    elapsed = finish - start;
+    printf("Elapsed time for threading  without threds 2  = %e seconds\n", elapsed);
+
+}
+void threading5(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_count){
+    int i, j;
+    double start, finish, elapsed;
+    start = omp_get_wtime();
+    
+            for (int i = 0; i < GRIDPOITN; i++){
+                for (int j = 0; j < level; j++) {
+                    sum[i] += arr_dim[j][i];
+                }
+            }
+    
+    finish = omp_get_wtime();
+    elapsed = finish - start;
+    printf("Elapsed time for threading without threds 3  = %e seconds\n", elapsed);
+
+}
+void threading2(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_count){
+    int i, j;
+    double start, finish, elapsed;
+    start = omp_get_wtime();
+    #pragma omp parallel
+    {
+        float S_private[GRIDPOITN] = {0};
+        #pragma omp for  private(i, j) 
+            for (i = 0; i < level; i++){
+                for (j = 0; j < GRIDPOITN; j++){
+                    S_private[j] += arr_dim[i][j];
+                }
+            }
+        #pragma omp critical
+        {
+            for(int n=0; n<GRIDPOITN; ++n) {
+            sum[n] += S_private[n];
+            }
+        }
+    }
+    finish = omp_get_wtime();
+    elapsed = finish - start;
+    printf("Elapsed time for threading 2  = %e seconds\n", elapsed);
+
+}
+void threading3(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_count){
+    int i, j;
+    double start, finish, elapsed;
+    start = omp_get_wtime();
+    #pragma omp parallel
+    {
+        float S_private[GRIDPOITN] = {0};
+        #pragma omp for  private(i, j) 
+            for (int i = 0; i < GRIDPOITN; i++){
+                for (int j = 0; j < level; j++) {
+                    S_private[i] += arr_dim[j][i];
+                }
+            }
+        #pragma omp critical
+        {
+            for(int n=0; n<GRIDPOITN; ++n) {
+            sum[n] += S_private[n];
+            }
+        }
+    }
+    finish = omp_get_wtime();
+    elapsed = finish - start;
+    printf("Elapsed time for threading 3  = %e seconds\n", elapsed);
+
 }
