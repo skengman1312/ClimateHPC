@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N final_sub
-#PBS -l select=5:ncpus=5:mpiprocs=5:mem=6gb 
+#PBS -l select=1:ncpus=25:mpiprocs=5:mem=6gb 
 #PBS -l walltime=0:25:00
 #PBS -j oe
 # set the excution on the short queue
