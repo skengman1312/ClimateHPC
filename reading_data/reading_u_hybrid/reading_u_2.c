@@ -41,7 +41,7 @@ void net_write(float * final_averages,int k);
 int main (int argc, char *argv[]){
     /* MPI  inizialization */
     int provided, required=MPI_THREAD_FUNNELED;
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+    MPI_Init_thread(&argc, &argv, required, &provided);
 
     // MPI_Init(&argc, &argv);
 

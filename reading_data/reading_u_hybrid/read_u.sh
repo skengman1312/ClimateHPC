@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -N final_sub
-#PBS -l select=1:ncpus=25:mpiprocs=5:mem=8gb 
+#PBS -l select=1:ncpus=16:mpiprocs=4:mem=8gb 
 #PBS -l walltime=0:20:00
 #PBS -j oe
 # set the excution on the short queue
@@ -11,9 +11,8 @@ cd ${PBS_O_WORKDIR}
 export I_MPI_DEBUG=5
 export I_MPI_PIN_DOMAIN=omp
 export I_MPI_PIN_ORDER=compact
-export OMP_NUM_THREADS=5
+export OMP_NUM_THREADS=4
 export KMP_AFFINITY=compact
-export OMP_PROC_BIND = true
 mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u.out reading_u_2.c -lm 
 mpirun -prepend-rank $(pwd)/reading_u.out
 date
