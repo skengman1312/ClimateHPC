@@ -156,6 +156,7 @@ int main (int argc, char *argv[]){
             printf("The processes %d took %lf seconds to scatter \n",rank,temp);
             printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
             #endif
+            // printf("%f for proceess %d\n",levels[0][150],rank );
             /*THREADING*/
             // gettimeofday(&t_timer2_start, NULL); // start communication timer
             t_start = omp_get_wtime();
@@ -181,6 +182,7 @@ int main (int argc, char *argv[]){
             printf("The processes %d took %lf seconds to scatter \n",rank,temp);
             printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
             #endif
+            // printf("%f for proceess %d\n",levels[0][150],rank );
             /*THREADING*/
             // gettimeofday(&t_timer2_start, NULL); // start communication timer
             t_start = omp_get_wtime();
@@ -254,7 +256,8 @@ void threading(float * sum,float levels[][GRID_POINTS],int  rank,int size,int le
     // start = omp_get_wtime();
    #pragma omp parallel
     {
-        float S_private[GRID_POINTS] = {0};
+        float *S_private;
+        S_private = (float *)calloc(GRID_POINTS, sizeof(float));
         #pragma omp for  private(i, j) 
             for (i = 0; i < boundary; i++){
                 for (j = 0; j < GRID_POINTS; j++){
@@ -267,6 +270,7 @@ void threading(float * sum,float levels[][GRID_POINTS],int  rank,int size,int le
                 sum[n] += S_private[n];
             }
         }
+        free(S_private);
     }
     // finish = omp_get_wtime();
     // elapsed = finish - start;

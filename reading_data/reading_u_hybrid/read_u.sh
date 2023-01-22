@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N final_sub
-#PBS -l select=1:ncpus=25:mpiprocs=5:mem=6gb 
-#PBS -l walltime=0:25:00
+#PBS -l select=2:ncpus=3:mpiprocs=5:mem=4gb 
+#PBS -l walltime=0:09:00
 #PBS -j oe
 # set the excution on the short queue
 #PBS -q short_cpuQ
@@ -15,7 +15,7 @@ export OMP_NUM_THREADS=5
 export KMP_AFFINITY=verbose,compact
 
 mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u.out reading_u.c -lm -mcmodel medium
-mpirun  -prepend-rank $(pwd)/reading_u.out
+mpirun -n 5 $(pwd)/reading_u.out
 date
 
 ALLPROC=`cat $PBS_NODEFILE | wc -l`
