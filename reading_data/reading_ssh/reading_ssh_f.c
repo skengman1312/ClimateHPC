@@ -27,7 +27,11 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define UNITS_time "s"
 
 /*MACROS end*/
-
+/*This is a function that measures time using system time val
+We subtract both time instances and we convert final output in seconds*/
+double time_diff(struct timeval *start, struct timeval *end);
+void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
+/*averaging parallelized function*/
 void average(float local_ssh[][GRID_POINTS], int timeframe, float rbuff[GRID_POINTS]);
 
 int main () {
@@ -103,7 +107,7 @@ int main () {
 
         /* sum matrix */
 //    static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
-        for (int i = 0; i < 30+30; i++) {
+        for (int i = 0; i < 30*12; i++) {
             start[0] = i;
             if ((retval = nc_get_vara_float(ncid, ssh_id, start,
                                             count, &ssh[i][0]))) ERR(retval);
@@ -111,8 +115,8 @@ int main () {
         }
         printf("ssh[0][0] : %lf\n", ssh[0][0]);
         printf("ssh[29][8852365] : %lf\n", ssh[29][8852365]);
-        printf("ssh[0+30][0] : %lf\n", ssh[0+30][0]);
-        printf("ssh[29+30][8852365] : %lf\n", ssh[29+30][8852365]);
+        printf("ssh[60][0] : %lf\n", ssh[0+30*2][0]);
+        printf("ssh[89][8852365] : %lf\n", ssh[89][8852365]);
         /*CLOSING FILE*/
         if ((retval = nc_close(ncid))) ERR(retval);
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
@@ -244,4 +248,17 @@ void  average(float local_ssh[][GRID_POINTS], int timeframe, float rbuff[GRID_PO
         printf("I am proc 0 and the collected avg is %g, %g, %g\n", rbuff[0], rbuff[1], rbuff[2]);
 
     return;
+}
+
+double time_diff(struct timeval *start, struct timeval *end)
+{
+    // long tv_sec;                /* seconds */
+    // long tv_usec;               /* microseconds */
+    return ((end->tv_sec - start->tv_sec) +  1e-6 *(end->tv_usec - start->tv_usec));
+}
+void convert_time_hour_sec(double seconds,long int *h,long int *m,long int *s)
+{
+    *h = ((long int) seconds/3600);
+    *m = ((long int) seconds -(3600 * ( *h )))/60;
+    *s = ((long int) seconds -(3600 * ( *h ))-(( *m ) * 60));
 }

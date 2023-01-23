@@ -84,7 +84,7 @@ if __name__ == "__main__":
     print("min: ", ssh.min())
     print("max ", ssh.max())
 
-    animated_plot(ssh, grid)
+    # animated_plot(ssh, grid)
 
     #
     # cdata = pd.concat([unod, vnod], axis=1)       #ssh, unod, vnod], axis=1)
