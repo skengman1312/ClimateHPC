@@ -40,8 +40,6 @@ double time_diff(struct timeval * start, struct timeval *end);
 void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
 void threading(float * sum, float ** levels, int rank, int size, int levels_per_proc);
 void net_write(float * final_averages,int k);
-int malloc2D(float ***array, int n, int m);
-int free2D(float ***array);
 /*FUNCTIONS end*/
 int main (int argc, char *argv[]){
     /* MPI  inizialization */
@@ -73,8 +71,9 @@ int main (int argc, char *argv[]){
     double temp;
     double temp2;
     // static float u_speed[N_NZ1][GRID_POINTS] = {{0}};
-    float **u_speed;
-    malloc2D(&u_speed, N_NZ1, GRID_POINTS);
+    float **u_speed = malloc(sizeof(float *) * N_NZ1);
+    for (i = 0; i < N_NZ1; i++)
+        u_speed[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
     /*Time variables to be used to see how much time each process takes*/
     struct timeval t_timer1_start;/*timer for process 0*/
     struct timeval t_timer1_finish;
@@ -157,10 +156,16 @@ int main (int argc, char *argv[]){
         start[1] = 0;
         start[2] = 0;
     }
-
     int levels_per_proc = ceil((double)N_NZ1 / row_size);/*if 2.3 is passed to ceil(), it will return 3*/
     int sendcounts[row_size];// for scatterv
     int displs[row_size];// for scatterv
+    int sizes[2] = {N_NZ1, GRID_POINTS};
+    int subsizes[2] = {levels_per_proc, GRID_POINTS};
+    int starts[2] = {0, 0};
+    MPI_Datatype subarray,resizedtype;
+    MPI_Type_create_subarray(SUBARRAY_SIZE,sizes,subsizes,starts,MPI_ORDER_C,MPI_FLOAT,&subarray);
+    MPI_Type_create_resized(subarray, 0, GRID_POINTS*levels_per_proc*sizeof(float), &resizedtype);
+    MPI_Type_commit(&resizedtype);
     if (row_rank == 0){
             printf("Number of processes: %d (levels being read for each process: %d)\n", row_size, levels_per_proc);
 /*TIME START T3*/
@@ -174,147 +179,66 @@ int main (int argc, char *argv[]){
     }
     sendcounts[row_size-1] = (N_NZ1-(levels_per_proc*(row_size-1)))*GRID_POINTS;
     // float levels[levels_per_proc][GRID_POINTS];
-
-    float **levels;
-    malloc2D(&levels,levels_per_proc,GRID_POINTS);
-
-
-    for (k = row_rank * time_per_proc;k< limit; k++){
-        float * sum;
-        float *final_averages;
-        sum = (float *)calloc(GRID_POINTS, sizeof(float));
-        if (!sum)
-        {
-            fprintf(stderr, "Could not allocate summm %d\n", row_rank); // I am trying to send sthg that is nully so it will raise rror
-            MPI_Abort(row_comm, 1);
-        }
-        final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
-        if (!final_averages)
-        {
-            fprintf(stderr, "Could not allocate finale averages %d\n", row_rank); // I am trying to send sthg that is nully so it will raise rror
-            MPI_Abort(row_comm, 1);
-        }
-        t_nc_scatter_sum= 0;
-        t_threading_sum= 0;
-
-        if (row_rank == 0)
-        {
-            gettimeofday(&t_timer1_start, NULL); //start timer of rank0
-
-        }
-
-        if(row_rank==0){
-            start[0] = k;
-            if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
-                        ERR(retval);
-            printf("I read %lf, from process %d \n",u_speed[0][150],row_rank);
-        }
-        /*SCATTERING*/
-        // MPI_Barrier(row_comm);
- 
-        gettimeofday(&t_timer2_start, NULL); // start communication timer
-        MPI_Scatterv(&(u_speed[0][0]),sendcounts,displs,MPI_FLOAT,&(levels[0][0]),GRID_POINTS*levels_per_proc,MPI_FLOAT,0,row_comm);
-        gettimeofday(&t_timer2_finish, NULL);
-        t_nc_scatter=time_diff(&t_timer2_start, &t_timer2_finish);
-        printf("i read %lf in row %d\n",levels[0][0],row_rank);
-#ifdef DEBUG
-        convert_time_hour_sec(t_nc_scatter,&t_hours,&t_minutes,&t_seconds);
-        printf("The processes %d took %lf seconds to scatter \n",row_rank,t_nc_scatter);
-        printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-        #endif     
-        
-        // printf("%f for proceess %d\n",levels[0][150],rank );
-        /*THREADING*/
-        
-        t_start = omp_get_wtime();
-        threading(sum, levels, row_rank, row_size, levels_per_proc);
-        t_finish = omp_get_wtime();
-        t_threading = t_finish - t_start;
-        printf("THREADING read this %lf in row %d\n",sum[0],row_rank);
-        break;
-
-        #ifdef DEBUG
-        convert_time_hour_sec(t_threading,&t_hours,&t_minutes,&t_seconds);
-        printf("The processes %d took %lf seconds to thread \n",row_rank,t_threading);
-        printf("The process took this time to finish threading %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-        #endif
-        
-        // REDUCE
-        gettimeofday(&t_timer2_start, NULL); // start communication timer
-        MPI_Reduce(sum, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, row_comm);
-        MPI_Reduce(&t_nc_scatter, &t_nc_scatter_sum, 1, MPI_DOUBLE, MPI_SUM, 0, row_comm);
-        MPI_Reduce(&t_threading, &t_threading_sum, 1, MPI_DOUBLE, MPI_SUM, 0, row_comm);
-        gettimeofday(&t_timer2_finish, NULL);
-        temp=time_diff(&t_timer2_start, &t_timer2_finish);
-        
-        // Total time 
-        free(sum);
-        gettimeofday(&t_timer1_finish, NULL);
-        temp2=time_diff(&t_timer1_start, &t_timer1_finish);
-
-        // Printing stuff
-        if(row_rank==0){
-            t_nc_scatter_sum /= row_size;
-            t_threading_sum /= row_size;
-            convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-            printf("The processes %d took %lf seconds to reduce \n",row_rank,temp);
-            printf("The process took to reduce %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            convert_time_hour_sec(temp2,&t_hours,&t_minutes,&t_seconds);
-            printf("The processes %d took %lf seconds to finish 1 time data point \n",row_rank,temp2);
-            printf("The process took this time to finish 1 time data point %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            // fprintf(fpt,"%d, %lf, %lf, %lf, %lf\n",k,t_nc_scatter_sum, t_threading_sum,temp,temp2);
-            net_write(final_averages,k);
-        }
-        free(final_averages);
+    float **levels = malloc(sizeof(float *) * levels_per_proc);
+    for (i = 0; i < levels_per_proc; i++){
+        levels[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
     }
-    if (row_rank == 0){
-//         /*TIME END T3*/
-        gettimeofday(&t_timer3_finish, NULL); 
-        temp=time_diff(&t_timer3_start, &t_timer3_finish);
-        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-//         // fprintf(fpt,"0, 0, 0, 0, %lf\n",temp);        
-        printf("#########THE END OF COMPUTATION OVER ALL TIMESTEPS#######\n");
-        printf("The time taken to paralize everything for all of the time steps %lf seconds\n",temp);
-        printf("The time taken to paralize everything for all of the time steps %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+    for (k = row_rank * time_per_proc;k< limit; k++){
+            float * sum;
+            float *final_averages;
+            sum = (float *)calloc(GRID_POINTS, sizeof(float));
+            if (!sum)
+            {
+                fprintf(stderr, "Could not allocate summm %d\n", row_rank); // I am trying to send sthg that is nully so it will raise rror
+                MPI_Abort(row_comm, 1);
+            }
+            final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
+            if (!final_averages)
+            {
+                fprintf(stderr, "Could not allocate finale averages %d\n", row_rank); // I am trying to send sthg that is nully so it will raise rror
+                MPI_Abort(row_comm, 1);
+            }
+            t_nc_scatter_sum= 0;
+            t_threading_sum= 0;
+
+            if (row_rank == 0)
+            {
+                gettimeofday(&t_timer1_start, NULL); //start timer of rank0
+
+            }
+            if(row_rank==0){
+                start[0] = k;
+                if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
+                            ERR(retval);
+                printf("I read %lf, from process %d \n",u_speed[0][150],row_rank);
+            }
+            /*SCATTERING*/
+            // MPI_Barrier(row_comm);
+            gettimeofday(&t_timer2_start, NULL); // start communication timer
+            MPI_Scatterv(&(u_speed[0][0]),sendcounts,displs,resizedtype,&(levels[0][0]),GRID_POINTS*levels_per_proc,MPI_FLOAT,0,row_comm);
+            gettimeofday(&t_timer2_finish, NULL);
+            t_nc_scatter=time_diff(&t_timer2_start, &t_timer2_finish);
+            printf("i read %lf in row %d\n",levels[0][0],row_rank);
+            free(final_averages);
+            free(sum);
+            break;
     }
     // fclose(fpt);
-
-    free2D(&levels);
-    free2D(&u_speed);
+    for (i = 0; i < levels_per_proc; i++){
+        free(levels[i]);
+    }
+    free(levels);
+    for (i = 0; i < N_NZ1; i++){
+        free(u_speed[i]);
+    }
+    free(u_speed);
     MPI_Comm_free(&row_comm);
+    MPI_Type_free(&resizedtype);
     printf("Terminated properly\n");
     MPI_Finalize();
     return 0;
 }
-int free2D(float ***array) {
-    /* free the memory - the first element of the array is at the start */
-    free(&((*array)[0][0]));
 
-    /* free the pointers into the memory */
-    free(*array);
-
-    return 0;
-}
-int malloc2D(float ***array, int n, int m) {
-    int i;
-    /* allocate the n*m contiguous items */
-    float *p = calloc(n*m,sizeof(float));
-
-    if (!p) return -1;
-
-    /* allocate the row pointers into the memory */
-    (*array) = malloc(n*sizeof(float*));
-    if (!(*array)) {
-       free(p);
-       return -1;
-    }
-
-    /* set up the pointers into the contiguous memory */
-    for (i=0; i<n; i++)
-       (*array)[i] = &(p[i*m]);
-
-    return 0;
-}
 void net_write(float * final_averages, int k){
    int ncid, retval,unod_id;
     size_t start_1[2]={k,0};

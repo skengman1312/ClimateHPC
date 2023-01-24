@@ -180,15 +180,6 @@ int main (int argc, char *argv[]){
             printf("The processes %d took %lf seconds to scatter \n",rank,t_nc_scatter);
             printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
             #endif     
-            gettimeofday(&t_timer2_start, NULL); // start communication timer
-            MPI_Scatterv(u_speed,sendcounts,displs,MPI_FLOAT,levels,GRID_POINTS*levels_per_proc,MPI_FLOAT,0,MPI_COMM_WORLD);
-            gettimeofday(&t_timer2_finish, NULL);
-            t_nc_scatter=time_diff(&t_timer2_start, &t_timer2_finish);
-            #ifdef DEBUG
-            convert_time_hour_sec(t_nc_scatter,&t_hours,&t_minutes,&t_seconds);
-            printf("The processes %d took %lf seconds to scatter \n",rank,t_nc_scatter);
-            printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            #endif
             // printf("%f for proceess %d\n",levels[0][150],rank );
             /*THREADING*/
             // gettimeofday(&t_timer2_start, NULL); // start communication timer
