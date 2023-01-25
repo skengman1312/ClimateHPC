@@ -217,19 +217,18 @@ int main () {
         * associated with the file, and flushes any buffers. */
         if ((retval = nc_close(ncid2)))
         ERR(retval);
-        gettimeofday(timers_end+1, NULL);
+        gettimeofday(timers_end+2, NULL);
+        t_nc_reading_time_Totalsum = 0;
 
         double temp=time_diff(timers_start, timers_end);
         convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
         // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
-        convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to do Nc read is %lf seconds\n",t_nc_reading_time_Totalsum);
+        // convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do Nc read is %lf seconds\n",temp);
         printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
         temp=time_diff(timers_start+1, timers_end+1);
         convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-        // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
-        convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to average all is %lf seconds\n",t_nc_reading_time_Totalsum);
+        printf("The time taken to average all is %lf seconds\n",temp);
         printf("The time taken to average all is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
     }
     MPI_Finalize();
