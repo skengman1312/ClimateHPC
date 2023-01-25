@@ -2,6 +2,8 @@
 #include<stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <mpi.h>
+
 #define GRIDPOITN 8
 #define level 4
 /*
@@ -37,6 +39,19 @@ int main(int argc, char *argv[])
     int sum[GRIDPOITN]={0};
     int i;
     int threadnumb;
+        /* MPI  inizialization */
+    MPI_Init(&argc, &argv);
+
+    int size;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+    // Print off a hello world message with processor name
+    printf("greetings:  %s, rank %d out of %d processes\n",processor_name, rank, size);
 // int y = 0;
 // int thread_count;
 // thread_count = strtol(argv[1], NULL, 10);
@@ -57,6 +72,7 @@ threadnumb = omp_get_num_threads();
     for (i = 0; i < GRIDPOITN; i++){
         printf("%d,",sum[i]);
     }
+    
     printf("\n");
      return 0;
 }
@@ -94,8 +110,8 @@ void threading5(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_coun
     double start, finish, elapsed;
     start = omp_get_wtime();
     
-            for (int i = 0; i < GRIDPOITN; i++){
-                for (int j = 0; j < level; j++) {
+            for ( i = 0; i < GRIDPOITN; i++){
+                for ( j = 0; j < level; j++) {
                     sum[i] += arr_dim[j][i];
                 }
             }
@@ -138,8 +154,8 @@ void threading3(int sum [level],int arr_dim [level][GRIDPOITN], int *thread_coun
     {
         float S_private[GRIDPOITN] = {0};
         #pragma omp for  private(i, j) 
-            for (int i = 0; i < GRIDPOITN; i++){
-                for (int j = 0; j < level; j++) {
+            for ( i = 0; i < GRIDPOITN; i++){
+                for ( j = 0; j < level; j++) {
                     S_private[i] += arr_dim[j][i];
                 }
             }
