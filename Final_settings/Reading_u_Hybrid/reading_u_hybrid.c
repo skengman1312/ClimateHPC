@@ -80,14 +80,18 @@ int main (int argc, char *argv[]){
     }
     sendcounts[size-1] = (N_NZ1-(levels_per_proc*(size-1)))*GRID_POINTS;
     static float u_speed[N_NZ1][GRID_POINTS] = {{0}};
+    float levels[15][GRID_POINTS]={{0}} ;
+
     // float **u_speed;
     // malloc2D(&u_speed,N_NZ1,GRID_POINTS);
     // float **levels;
     // malloc2D(&levels,levels_per_proc,GRID_POINTS);
-    float **levels = (float**) malloc(sizeof(float *) * levels_per_proc);
-    for (int i = 0; i < levels_per_proc; i++){
-        levels[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
-    }
+    // float **levels = (float**) malloc(sizeof(float *) * levels_per_proc);
+    // float **levels;
+    // for (int i = 0; i < levels_per_proc; i++){
+    //     levels[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
+    // }
+    // malloc2D(&levels,levels_per_proc,GRID_POINTS);
     // float levels[levels_per_proc][GRID_POINTS];
     /*Time variables to be used to see how much time each process takes*/
     struct timeval t_timer1_start;/*timer for process 0*/
@@ -172,10 +176,10 @@ int main (int argc, char *argv[]){
         }
         gettimeofday(&t_timer2_start, NULL); // start communication timer
         if(rank==0){
-            MPI_Scatterv(u_speed,sendcounts,displs,MPI_FLOAT,&(levels[0][0]),GRID_POINTS*levels_per_proc,MPI_FLOAT,0,MPI_COMM_WORLD);
+            MPI_Scatterv(u_speed,sendcounts,displs,MPI_FLOAT,levels,GRID_POINTS*levels_per_proc,MPI_FLOAT,0,MPI_COMM_WORLD);
         }
         else{
-            MPI_Scatterv(u_speed,sendcounts,displs,MPI_FLOAT,&(levels[0][0]),GRID_POINTS*levels_per_proc,MPI_FLOAT,0,MPI_COMM_WORLD);
+            MPI_Scatterv(u_speed,sendcounts,displs,MPI_FLOAT,levels,GRID_POINTS*levels_per_proc,MPI_FLOAT,0,MPI_COMM_WORLD);
         }
         gettimeofday(&t_timer2_finish, NULL);
         t_scatter=time_diff(&t_timer2_start, &t_timer2_finish);
@@ -185,39 +189,39 @@ int main (int argc, char *argv[]){
         printf("The process took this time to finish scattering %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
         #endif
 
+        break;
 
+        // /*THREADING*/
+        // t_start = omp_get_wtime();
+        // threading(sum, levels, rank, size, levels_per_proc);
+        // t_finish = omp_get_wtime();
+        // t_threading = t_finish - t_start;
+        // #ifdef DEBUG
+        // convert_time_hour_sec(t_threading,&t_hours,&t_minutes,&t_seconds);
+        // printf("The processes %d took %lf seconds to thread \n",rank,t_threading);
+        // printf("The process took this time to finish threading %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        // #endif
 
-        /*THREADING*/
-        t_start = omp_get_wtime();
-        threading(sum, levels, rank, size, levels_per_proc);
-        t_finish = omp_get_wtime();
-        t_threading = t_finish - t_start;
-        #ifdef DEBUG
-        convert_time_hour_sec(t_threading,&t_hours,&t_minutes,&t_seconds);
-        printf("The processes %d took %lf seconds to thread \n",rank,t_threading);
-        printf("The process took this time to finish threading %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-        #endif
-
-        gettimeofday(&t_timer2_start, NULL); // start communication timer
-        MPI_Reduce(sum, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&t_scatter, &t_scatter_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&t_threading, &t_threading_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        gettimeofday(&t_timer2_finish, NULL);
-        temp=time_diff(&t_timer2_start, &t_timer2_finish);
-        free(sum);
-        temp2=time_diff(&t_timer1_start, &t_timer1_finish);
-        if(rank==0){
-            t_scatter_sum /= size;
-            t_threading_sum /= size;
-            convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-            printf("The processes %d took %lf seconds to reduce \n",rank,temp);
-            printf("The process took to reduce %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            convert_time_hour_sec(temp2,&t_hours,&t_minutes,&t_seconds);
-            printf("The processes %d took %lf seconds to finish 1 time data point \n",rank,temp2);
-            printf("The process took this time to finish 1 time data point %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            net_write(final_averages,k);
-        }
-        free(final_averages);
+        // gettimeofday(&t_timer2_start, NULL); // start communication timer
+        // MPI_Reduce(sum, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+        // MPI_Reduce(&t_scatter, &t_scatter_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        // MPI_Reduce(&t_threading, &t_threading_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        // gettimeofday(&t_timer2_finish, NULL);
+        // temp=time_diff(&t_timer2_start, &t_timer2_finish);
+        // free(sum);
+        // temp2=time_diff(&t_timer1_start, &t_timer1_finish);
+        // if(rank==0){
+        //     t_scatter_sum /= size;
+        //     t_threading_sum /= size;
+        //     convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        //     printf("The processes %d took %lf seconds to reduce \n",rank,temp);
+        //     printf("The process took to reduce %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        //     convert_time_hour_sec(temp2,&t_hours,&t_minutes,&t_seconds);
+        //     printf("The processes %d took %lf seconds to finish 1 time data point \n",rank,temp2);
+        //     printf("The process took this time to finish 1 time data point %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
+        //     net_write(final_averages,k);
+        // }
+        // free(final_averages);
     }
 
     if (rank == 0){

@@ -18,7 +18,7 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 #define TIME "time"  // the variable is called time in the file. I knew it using ncdump command
 #define UNOD "unod"  // the variable is called unod in the file. I knew it using ncdump command
 #define N_NZ1 69            // the variable nz1 has 69 entries
-#define N_TIME 12            // the variable time has 12 entries
+#define N_TIME 12            // the variable time has 12 entu_speedries
 #define NDIMS 3
 #define GRID_POINTS 8852366
 #define DEBUG 1
