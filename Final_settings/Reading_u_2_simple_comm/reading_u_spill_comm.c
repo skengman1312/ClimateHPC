@@ -26,13 +26,14 @@
 #define UNITS "units"
 #define UNITS_time "s"
 #define NDIMS_wr 3
-#define SPLIT_COMM 1
+#define SPLIT_COMM 4
 /*MACROS end*/
 
 double time_diff(struct timeval *start, struct timeval *end);
 void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
 void net_write(float * final_averages,int k);
 void threading(float *sum, float **levels, int levels_per_proc);
+void net_write_sep_files(float *final_averages, int k);
 
 int main (int argc, char *argv[]){
 
@@ -97,28 +98,28 @@ int main (int argc, char *argv[]){
 
     
     /*Creating 1 file for writing everything*/
-    if(0==rank){
-        /*START creating file */
-        if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
-            ERR(retval);
-        if ((retval = nc_def_dim(ncid2, TIME, NC_UNLIMITED, &time_dimid)))
-            ERR(retval);
-        if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &speed_dimid)))
-            ERR(retval);
-        dimid[0]=time_dimid;
-        dimid[1]=speed_dimid;
-        if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, 2, dimid, &var_speed_id)))// define the varibael
-            ERR(retval);
-        if ((retval = nc_put_att_text(ncid2, var_speed_id, UNITS, 
-				 strlen(UNITS_speed), UNITS_speed)))
-            ERR(retval);
-        /* End define mode. */
-        if ((retval = nc_enddef(ncid2)))
-            ERR(retval);
-        if ((retval = nc_close(ncid2)))
-            ERR(retval);
-        /*END creating file */
-    }
+    // if(0==rank){
+    //     /*START creating file */
+    //     if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
+    //         ERR(retval);
+    //     if ((retval = nc_def_dim(ncid2, TIME, NC_UNLIMITED, &time_dimid)))
+    //         ERR(retval);
+    //     if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &speed_dimid)))
+    //         ERR(retval);
+    //     dimid[0]=time_dimid;
+    //     dimid[1]=speed_dimid;
+    //     if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, 2, dimid, &var_speed_id)))// define the varibael
+    //         ERR(retval);
+    //     if ((retval = nc_put_att_text(ncid2, var_speed_id, UNITS, 
+	// 			 strlen(UNITS_speed), UNITS_speed)))
+    //         ERR(retval);
+    //     /* End define mode. */
+    //     if ((retval = nc_enddef(ncid2)))
+    //         ERR(retval);
+    //     if ((retval = nc_close(ncid2)))
+    //         ERR(retval);
+    //     /*END creating file */
+    // }
     /*SPILITING_COMMUNICATION*/
      // COMUNICATION settings    
     int color = rank / SPLIT_COMM; // Determine color based on row
@@ -164,17 +165,10 @@ int main (int argc, char *argv[]){
     
     /*START*/
     if (row_rank == 0){
-            printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
+            printf("Number of processes: %d (levels being read for each process: %d)\n", size, count_levels_per_proc);
     /*TIME START T3*/
             printf("#########THE START OF COMPUTATION OVER ALL TIMESTEPS#######\n");
             gettimeofday(&t_timer3_start, NULL); //start timer of rank0
-    }
-    
-
-        float **Writing = malloc(sizeof(float *) * 4);
-    
-    for (i = 0; i < 4; i++){
-            Writing[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
     }
     
     for (k = color * time_per_proc;k< limit_time; k++){
@@ -215,7 +209,7 @@ int main (int argc, char *argv[]){
         printf("The process took this time to finish reducing %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
         #endif
         free(sum_u_speed);
-        net_write(final_averages,k);
+        net_write_sep_files(final_averages,k);
         free(final_averages);
     }
     if (rank == 0){
@@ -247,12 +241,82 @@ void threading(float * sum,float ** levels,int levels_per_proc)
     int i, j;
     for (i = 0; i < levels_per_proc; i++){
         for (j = 0; j < GRID_POINTS; j++){
-                    sum[j] += levels[i][j];
+                    sum[j] += levels[i][j]/ N_NZ1;;
         }
     }
 
 }
-
+void net_write_sep_files(float * final_averages, int k){
+            /*START creating file */
+    int retval, ncid2;
+    int time_dimid; // time dimension id 
+    int speed_dimid; // speed dimension id 
+    int dimid[2]; // for wrtieing 
+    int var_speed_id;// variable speed id
+    char *pointer;
+    switch (k)
+    {
+        case 0:
+            pointer="nc_file_January.nc";
+            break;
+        case 1: 
+            pointer="nc_file_February.nc";
+            break;
+        case 2: 
+            pointer="nc_file_March.nc";
+            break;
+        case 3: 
+            pointer="nc_file_April.nc";
+            break;
+        case 4: 
+            pointer="nc_file_May.nc";
+            break;
+        case 5: 
+            pointer="nc_file_June.nc";
+            break;
+        case 6: 
+            pointer="nc_file_July.nc";
+            break;
+        case 7: 
+            pointer="nc_file_August.nc";
+            break;
+        case 8: 
+            pointer="nc_file_September.nc";
+            break;
+        case 9: 
+            pointer="nc_file_October.nc";
+            break;
+        case 10: 
+            pointer="nc_file_November.nc";
+            break;
+        default: 
+            pointer="nc_file_December.nc";
+    }
+    if ((retval = nc_create(pointer, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
+        ERR_spec(retval);
+    if ((retval = nc_def_dim(ncid2, TIME, NC_UNLIMITED, &time_dimid)))
+            ERR_spec(retval);
+    if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &speed_dimid)))
+            ERR_spec(retval);
+    dimid[0]=time_dimid;
+    dimid[1]=speed_dimid;
+    if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, 2, dimid, &var_speed_id)))// define the varibael
+            ERR_spec(retval);
+    if ((retval = nc_put_att_text(ncid2, var_speed_id, UNITS, 
+				 strlen(UNITS_speed), UNITS_speed)))
+            ERR_spec(retval);
+        /* End define mode. */
+    if ((retval = nc_enddef(ncid2)))
+            ERR_spec(retval);
+    // if ((retval = nc_close(ncid2)))
+    //         ERR(retval);
+    size_t start_1[2]={0,0};
+    size_t count_1[2]={1,GRID_POINTS};
+    // if ((retval = nc_open(FILE_NAME2, NC_WRITE, &ncid)))ERR_spec(retval);
+    // if ((retval = nc_inq_varid(ncid2, "speed", &unod_id)))ERR_spec(retval);
+    if ((retval = nc_put_vara_float(ncid2,var_speed_id, start_1, count_1,&final_averages[0])))ERR_spec(retval);
+    if ((retval = nc_close(ncid2)))ERR_spec(retval);
+}
 void net_write(float * final_averages, int k){
    int ncid, retval,unod_id;
     size_t start_1[2]={k,0};
