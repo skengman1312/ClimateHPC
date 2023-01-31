@@ -46,29 +46,29 @@ int main (int argc, char *argv[]){
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     /*To save the processor name that I am working with*/
-    // char processor_name[MPI_MAX_PROCESSOR_NAME];
-    // int name_len;
-    // MPI_Get_processor_name(processor_name, &name_len);
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
 
     /*Print off a hello world message with processor name and rank*/
-    // printf("greetings, rank %d out of %d processes\n",
-    //        rank, size);
+    // printf("greetings:  %s, rank %d out of %d processes\n",
+    //        processor_name, rank, size);
     /* VARIABLES DEFINE START*/
     
     /*LOOOPING variables*/
     // int rec;
-    int i;
+    int i, j;
     int k ;
     /*NETCDF id*/
     int ncid;
     int unod_id;
     int retval;
     /*Netcdf id for write*/
-    int ncid2; // write file nmae
-    int time_dimid; // time dimension id 
-    int speed_dimid; // speed dimension id 
-    int dimid[2]; // for wrtieing 
-    int var_speed_id;// variable speed id 
+    // int ncid2; // write file nmae
+    // int time_dimid; // time dimension id 
+    // int speed_dimid; // speed dimension id 
+    // int dimid[2]; // for wrtieing 
+    // int var_speed_id;// variable speed id 
     size_t start[NDIMS], count[NDIMS];
 
     /*Time variables to be used to see how much time each process takes*/
@@ -129,9 +129,11 @@ int main (int argc, char *argv[]){
     int row_rank, row_size;
     MPI_Comm_rank(row_comm, &row_rank);
     MPI_Comm_size(row_comm, &row_size);
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
-    int name_len;
-    MPI_Get_processor_name(processor_name, &name_len);
+    printf("greetings:  %s, row rank %d for color %d the orginal rank is%d out of %d processes\n",
+           processor_name, row_rank,color,rank, size);
+    // char processor_name[MPI_MAX_PROCESSOR_NAME];
+    // int name_len;
+    // MPI_Get_processor_name(processor_name, &name_len);
     // printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n",rank, size, row_rank, row_size);
     int time_per_proc =ceil((double)N_TIME / SPLIT_COMM);//3
     /*color between 0 to 4*/
@@ -150,17 +152,23 @@ int main (int argc, char *argv[]){
     int count_levels_per_proc=levels_per_proc;
     if(row_rank==row_size-1){
         count_levels_per_proc = N_NZ1-levels_per_proc*row_rank;
+        // printf("%d\n", count_levels_per_proc);
     }
     count[0] = 1;/*1 time*/
     count[1] = count_levels_per_proc;/*1 level*/
     count[2] = GRID_POINTS;/*all gridpoints*/
     start[1] = row_rank*levels_per_proc;
     start[2] = 0;
+    // printf("For row %d i have the following values %zu\n ",row_rank,start[1]);
     // float  u_speed[count_levels_per_proc][GRID_POINTS];
-    float **u_speed = malloc(sizeof(float *) * count_levels_per_proc);
-    for (i = 0; i < count_levels_per_proc; i++){
-        u_speed[i] = (float *)calloc(GRID_POINTS ,sizeof(float));
+    float **u_speed = (float**)malloc(sizeof(float *) * levels_per_proc);
+    for (i = 0; i < levels_per_proc; i++){
+        u_speed[i] = calloc(GRID_POINTS ,sizeof(float));
+        if (u_speed[i] == NULL) {
+            printf("A Problem will occur now in allocate the u_speed");
+        }
     }
+
     // printf("count level per process %d for process %d\n",color * time_per_proc,rank );
     
     /*START*/
@@ -176,17 +184,29 @@ int main (int argc, char *argv[]){
         /*Instlalizat variables*/
 
         float * sum_u_speed;
-        sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
+        sum_u_speed = calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
-        final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
+        final_averages =calloc(GRID_POINTS, sizeof(float));
+        if (sum_u_speed == NULL || final_averages == NULL) {
+            printf("A Problem will occur now ");
+        }
+
         start[0] = k;
         t_threading_sum = 0;
         if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
             ERR(retval);
-
+        // break;
         /*THREADING*/
         t_start = omp_get_wtime();
-        threading(sum_u_speed, u_speed, count_levels_per_proc);
+        // threading(sum_u_speed, u_speed, count_levels_per_proc);
+        // if(row_rank==row_size-1){
+        //     printf("the value is %d", count_levels_per_proc);
+        // }
+        for (i = 0; i < count_levels_per_proc; i++){
+            for (j = 0; j < GRID_POINTS; j++){
+                    sum_u_speed[j] += u_speed[i][j]/ N_NZ1;;
+            }
+        }
         t_finish = omp_get_wtime();
         t_threading = t_finish - t_start;
         #ifdef DEBUG
@@ -208,8 +228,11 @@ int main (int argc, char *argv[]){
         printf("The processes %d took %lf seconds to reduce \n",rank,t_reducing);
         printf("The process took this time to finish reducing %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
         #endif
+        if(row_rank==0){
+                    net_write_sep_files(final_averages,k);
+                    // net_write(final_averages,k);
+        }
         free(sum_u_speed);
-        net_write_sep_files(final_averages,k);
         free(final_averages);
     }
     if (rank == 0){
@@ -222,7 +245,9 @@ int main (int argc, char *argv[]){
     }
 
     /*CLOSING FILE*/
-
+    // for (i = 0; i < count_levels_per_proc; i++){
+    //         free(u_speed[i]);      
+    // }
     if ((retval = nc_close(ncid)))
         ERR(retval);
     // for (int i = 0; i < levels_per_proc; i++){
