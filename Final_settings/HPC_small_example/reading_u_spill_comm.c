@@ -9,16 +9,16 @@
 
 
 /*MACROS START*/
-#define FILE_NAME "/shares/HPC4DataScience/FESOM2/unod.fesom.2010.nc"
+#define FILE_NAME "writing.nc"
 #define ERR(e) {printf("Error: %s\n", nc_strerror(e)); return 2;} //just simple macro to handle error with NETCDF
 #define ERR_spec(e) {printf("Error: %s\n", nc_strerror(e));} //just simple macro to handle error with NETCDF
-#define HEIGHT_1_NAME "nz1"  // the variable is called nz in the file. I knew it using ncdump command
+#define HEIGHT_1_NAME "height"  // the variable is called nz in the file. I knew it using ncdump command
 #define TIME "time"  // the variable is called time in the file. I knew it using ncdump command
-#define UNOD "unod"  // the variable is called unod in the file. I knew it using ncdump command
-#define N_NZ1 69            // the variable nz1 has 69 entries
-#define N_TIME 12            // the variable time has 12 entries
+#define UNOD "speed"  // the variable is called unod in the file. I knew it using ncdump command
+#define N_NZ1 10            // the variable nz1 has 69 entries
+#define N_TIME 4            // the variable time has 12 entries
 #define NDIMS 3
-#define GRID_POINTS 8852366
+#define GRID_POINTS 5
 // #define DEBUG 1
 // for write
 #define FILE_NAME2 "map_summarized_fuldataset_serial.nc"
@@ -26,7 +26,7 @@
 #define UNITS "units"
 #define UNITS_time "s"
 #define NDIMS_wr 3
-#define SPLIT_COMM 4
+#define SPLIT_COMM 2
 /*MACROS end*/
 
 double time_diff(struct timeval *start, struct timeval *end);
@@ -74,11 +74,6 @@ int main (int argc, char *argv[]){
     int unod_id;
     int retval;
     /*Netcdf id for write*/
-    // int ncid2; // write file nmae
-    // int time_dimid; // time dimension id 
-    // int speed_dimid; // speed dimension id 
-    // int dimid[2]; // for wrtieing 
-    // int var_speed_id;// variable speed id 
     size_t start[NDIMS], count[NDIMS];
 
     /*Time variables to be used to see how much time each process takes*/
@@ -98,38 +93,6 @@ int main (int argc, char *argv[]){
     long int t_hours = 0;
     double temp;
     /*DYNAMIC ALLOCATION*/
-    // float **u_speed;
-    // malloc2D(&u_speed, N_NZ1, GRID_POINTS);
-    // float *u_speed;
-    // u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
-
-    // static float u_speed[N_NZ1][GRID_POINTS] = {{0}};
-
-    
-    /*Creating 1 file for writing everything*/
-    // if(0==rank){
-    //     /*START creating file */
-    //     if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
-    //         ERR(retval);
-    //     if ((retval = nc_def_dim(ncid2, TIME, NC_UNLIMITED, &time_dimid)))
-    //         ERR(retval);
-    //     if ((retval = nc_def_dim(ncid2, UNOD, GRID_POINTS, &speed_dimid)))
-    //         ERR(retval);
-    //     dimid[0]=time_dimid;
-    //     dimid[1]=speed_dimid;
-    //     if ((retval = nc_def_var(ncid2, "speed", NC_FLOAT, 2, dimid, &var_speed_id)))// define the varibael
-    //         ERR(retval);
-    //     if ((retval = nc_put_att_text(ncid2, var_speed_id, UNITS, 
-	// 			 strlen(UNITS_speed), UNITS_speed)))
-    //         ERR(retval);
-    //     /* End define mode. */
-    //     if ((retval = nc_enddef(ncid2)))
-    //         ERR(retval);
-    //     if ((retval = nc_close(ncid2)))
-    //         ERR(retval);
-    //     /*END creating file */
-    // }
-
     int time_per_proc =ceil((double)N_TIME / SPLIT_COMM);//3
     /*color between 0 to 4*/
     int limit_time = (color + 1) * time_per_proc;
@@ -163,7 +126,7 @@ int main (int argc, char *argv[]){
     //         printf("A Problem will occur now in allocate the u_speed");
     //     }
     // }
-    // float u_speed[count_levels_per_proc][GRID_POINTS];
+    // static float u_speed[18][GRID_POINTS];
     float **u_speed;
     float *p = calloc(count_levels_per_proc*GRID_POINTS,sizeof(float));
     (u_speed) = malloc(count_levels_per_proc*sizeof(float*));

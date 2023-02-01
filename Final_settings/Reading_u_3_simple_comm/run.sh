@@ -13,7 +13,7 @@ module load hdf5-1.10.5--gcc-9.1.0
 # module load openmpi-4.0.4
 
 module list
-mpicc -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u_hybrid.out reading_u_spill_comm.c -lm -ldl -lz -lcurl -std=gnu99 -fopenmp
+mpicc -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_u_hybrid.out reading_u_spill_comm_v2.c -lm -ldl -lz -lcurl -std=gnu99 -fopenmp
 mpirun -np 16 -prepend-rank  $(pwd)/reading_u_hybrid.out
 
 # mpiexec -n 5  $(pwd)/reading_u_hybrid.out

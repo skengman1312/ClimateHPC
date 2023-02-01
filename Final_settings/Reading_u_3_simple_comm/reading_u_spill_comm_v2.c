@@ -139,45 +139,18 @@ int main (int argc, char *argv[]){
         limit_time = N_TIME;
     }
 
-    int levels_per_proc = ceil((double)N_NZ1 / row_size);/*if 2.3 is passed to ceil(), it will return 3*/
     if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid)))
     ERR(retval);
     if ((retval = nc_inq_varid(ncid, UNOD, &unod_id)))
     ERR(retval);
-    int count_levels_per_proc=levels_per_proc;
-    if(row_rank==row_size-1){
-        count_levels_per_proc = N_NZ1-levels_per_proc*row_rank;
-        printf("%dfor the row rank equal to %d \n", count_levels_per_proc,row_rank);
-    }
-    count[0] = 1;/*1 time*/
-    count[1] = count_levels_per_proc;/*14 level*/
-    count[2] = GRID_POINTS;/*all gridpoints*/
-    start[1] = row_rank*levels_per_proc;/*start from level 0 to 18 then 18-29*/
-    start[2] = 0;
-    printf("For row %d i have the following values %zu\n ",row_rank,start[1]);
-    // float  u_speed[count_levels_per_proc][GRID_POINTS];
-    // float **u_speed = (float**)malloc(sizeof(float *) * levels_per_proc);
-    // for (i = 0; i < levels_per_proc; i++){
-    //     u_speed[i] = (float *) calloc(GRID_POINTS ,sizeof(float));
-    //     if (u_speed[i] == NULL) {
-    //         printf("A Problem will occur now in allocate the u_speed");
-    //     }
-    // }
-    // float u_speed[count_levels_per_proc][GRID_POINTS];
-    float **u_speed;
-    float *p = calloc(count_levels_per_proc*GRID_POINTS,sizeof(float));
-    (u_speed) = malloc(count_levels_per_proc*sizeof(float*));
-    for (i=0; i<count_levels_per_proc; i++){
-       (u_speed)[i] = &(p[i*GRID_POINTS]);
-    }
+
+
+
+    float * u_speed;
+    u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
     // printf("count level per process %d for process %d\n",color * time_per_proc,rank );
     /*START*/
-    if (row_rank == 0){
-            printf("Number of processes: %d (levels being read for each process: %d)\n", size, count_levels_per_proc);
-    /*TIME START T3*/
-            printf("#########THE START OF COMPUTATION OVER ALL TIMESTEPS#######\n");
-            gettimeofday(&t_timer3_start, NULL); //start timer of rank0
-    }
+
     
     for (k = color * time_per_proc;k< limit_time; k++){
 
@@ -193,8 +166,7 @@ int main (int argc, char *argv[]){
 
         start[0] = k;
         t_threading_sum = 0;
-        if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
-            ERR(retval);
+     
         // break;
         /*THREADING*/
         t_start = omp_get_wtime();
@@ -202,9 +174,29 @@ int main (int argc, char *argv[]){
         // if(row_rank==row_size-1){
         //     printf("the value is %d", count_levels_per_proc);
         // }
-        for (i = 0; i < count_levels_per_proc; i++){
-            for (j = 0; j < GRID_POINTS; j++){
-                    sum_u_speed[j] += u_speed[i][j]/ N_NZ1;;
+        int levels_per_proc = ceil((double)N_NZ1 / row_size);/*if 2.3 is passed to ceil(), it will return 3*/
+        if (row_rank == 0){
+            printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
+            /*TIME START T3*/
+            printf("#########THE START OF COMPUTATION OVER ALL TIMESTEPS#######\n");
+            gettimeofday(&t_timer3_start, NULL); //start timer of rank0
+        }
+        int limit = (row_rank + 1) * levels_per_proc;
+        if (limit > N_NZ1)
+        {
+            limit = N_NZ1;
+        }
+
+        count[0] = 1;/*1 time*/
+        count[1] = 1;/*1 level*/
+        count[2] = GRID_POINTS;/*all gridpoints*/
+        start[2] = 0;
+        for (j = row_rank * levels_per_proc;j< limit; j++){
+            start[1] = j;
+            if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0])))
+            ERR(retval);
+            for (i = 0; i < GRID_POINTS;i++){
+                sum_u_speed[i] += u_speed[i]/ N_NZ1;
             }
         }
         t_finish = omp_get_wtime();
