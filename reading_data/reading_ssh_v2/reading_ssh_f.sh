@@ -2,7 +2,7 @@
 #PBS -l select=1:ncpus=5:mem=2gb
 
 # set max execution time
-#PBS -l walltime=0:10:00
+#PBS -l walltime=0:15:00
 
 
 # set the excution on the short queue

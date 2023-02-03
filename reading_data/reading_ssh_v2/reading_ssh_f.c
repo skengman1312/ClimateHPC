@@ -142,18 +142,21 @@ int main () {
     int month_per_color = 12/4; // has to be made relative
     /* end of setup of NetCDF reading */
 
-    static float local_ssh[N_TIME/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
+    static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
 
     /*LOOOPING variables*/
 
     /* sum matrix */
 //   static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
+    // color relative index and counter
     int color_start_index = color*month_per_color*30;
+    int color_counter = 0;
     for (int i = color_start_index; i < (color+1)*month_per_color*30; i++) {
         start[0] = i;
-        if ((retval = nc_get_vara_float(ncid, ssh_id, start,
-                                            count, &local_ssh[i][0]))) ERR(retval);
 
+        if ((retval = nc_get_vara_float(ncid, ssh_id, start,
+                                            count, &local_ssh[counter][0]))) ERR(retval);
+        color_counter++;
         }
 
     /*CLOSING FILE*/
@@ -166,8 +169,8 @@ int main () {
         printf("local_ssh[59][8852365] : %lf\n", local_ssh[89][8852365]);
     }
     if (world_rank == world_size-1) {
-        printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh[color*month_per_color*30][0], color);
-        printf("local_ssh[359][8852365] : %lf\n", local_ssh[((color+1)*month_per_color*30)-1][8852365]);
+        printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh[0][0], color);
+        printf("local_ssh[359][8852365] : %lf\n", local_ssh[89][8852365]);
     }
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d\n",
            world_rank, world_size, row_rank, row_size, color);
