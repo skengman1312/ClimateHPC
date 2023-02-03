@@ -28,7 +28,7 @@ mpicc -std=c99 -g -Wall -fopenmp -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /app
 #define UNITS_time "s"
 #define NDIMS_wr 3
 
-
+/*WORKING VERSION*/
 /*MACROS end*/
 /*FUNCTIONS START*/
 /*This is a function that measures time using system time val
@@ -51,10 +51,13 @@ int main (int argc, char *argv[]){
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
     // Print off a hello world message with processor name
-    printf("greetings:  %s, rank %d out of %d processes\n",
-           processor_name, rank, size);
+    printf("greetings:  %s, rank %d out of %d processes\n",processor_name, rank, size);
     /* VARIABLES DEFINE START*/
     
+    /*LOOOPING variables*/
+    int rec;
+    int i;
+    int k ;
     /*NETCDF id*/
     int ncid;
     int height_1_varid;          
@@ -130,10 +133,7 @@ int main (int argc, char *argv[]){
     if (rank == 0){
         gettimeofday(&t_timer3_start, NULL); //start timer of rank0
     }
-    /*LOOOPING variables*/
-    int rec;
-    int i;
-    int k ;
+
     /*Define the number of levels to do per process*/
     int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
     /*you have 69level/4 proccess using ceil operator give you 18 level per process*/

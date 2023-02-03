@@ -86,9 +86,7 @@ int main (int argc, char *argv[]){
     long int t_minutes = 0;
     long int t_hours = 0;
     double temp;
-    /*DYNAMIC ALLOCATION*/
-    // float **u_speed;
-    // malloc2D(&u_speed, N_NZ1, GRID_POINTS);
+ 
     float *u_speed;
     u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
 
@@ -122,21 +120,23 @@ int main (int argc, char *argv[]){
     ERR(retval);
     if ((retval = nc_inq_varid(ncid, UNOD, &unod_id)))
     ERR(retval);
-    count[0] = 1;/*1 time*/
-    count[1] = 1;/*1 level*/
-    count[2] = GRID_POINTS;/*all gridpoints*/
-    start[1] = 0;
-    start[2] = 0;
 
     int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
 
     int limit = (rank + 1) * levels_per_proc;
-    
     if (limit > N_NZ1)
     {
         limit = N_NZ1;
     }
 
+    count[0] = 1;/*1 time*/
+    count[1] = 1;/*1 level*/
+    count[2] = GRID_POINTS;/*all gridpoints*/
+    // start[1] = 0;
+    start[2] = 0;
+
+    
+  
     /* START timer 3 to have calculate total time*/
     if (rank == 0){
         gettimeofday(&t_timer3_start, NULL); //start timer of rank0
@@ -144,7 +144,6 @@ int main (int argc, char *argv[]){
 
 
     for (k = 0;k<N_TIME; k++){
-
         start[0] = k;
         t_nc_reading_time = 0 ;
         t_threading_reading_time = 0 ;
@@ -188,6 +187,7 @@ int main (int argc, char *argv[]){
             /* calculate the time take for SUMMING*/
             t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_threading_reading_time_sum+=t_threading_reading_time;
+            
         }
         /*END of FOR  LOOP*/    
 
@@ -211,6 +211,7 @@ int main (int argc, char *argv[]){
         if (rank == 0){ 
             gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
             /*TIME END T1*/
+            net_write(final_averages,k);
             t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
             convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken to do Nc read is %lf seconds\n",t_nc_reading_time_Totalsum);
@@ -230,7 +231,6 @@ int main (int argc, char *argv[]){
             printf("The end of readin time instance %d \n",k);
         }
         free(sum_u_speed);
-        net_write(final_averages,k);
         free(final_averages);
     }
     if (rank == 0){
@@ -241,7 +241,7 @@ int main (int argc, char *argv[]){
         printf("The time taken to paralize everything for all of the files %lf seconds\n",temp);
         printf("The time taken to paralize everything for all of the files %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
     }
-
+    free(u_speed);
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);
@@ -250,41 +250,6 @@ int main (int argc, char *argv[]){
     MPI_Finalize();
     return 0;
 }
-
-
-int free2D(float ***array) {
-    /* free the memory - the first element of the array is at the start */
-    free(&((*array)[0][0]));
-
-    /* free the pointers into the memory */
-    free(*array);
-
-    return 0;
-}
-int malloc2D(float ***array, int n, int m) {
-    int i;
-    /* allocate the n*m contiguous items */
-    float *p = calloc(n*m,sizeof(float));
-
-    if (!p) return -1;
-
-    /* allocate the row pointers into the memory */
-    (*array) = malloc(n*sizeof(float*));
-    if (!(*array)) {
-       free(p);
-       return -1;
-    }
-
-    /* set up the pointers into the contiguous memory */
-    for (i=0; i<n; i++)
-       (*array)[i] = &(p[i*m]);
-
-    return 0;
-}
-
-
-
-
 
 void net_write(float * final_averages, int k){
    int ncid, retval,unod_id;
