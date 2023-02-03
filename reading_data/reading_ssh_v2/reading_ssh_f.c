@@ -142,22 +142,28 @@ int main () {
     int month_per_color = 12/4; // has to be made relative
     /* end of setup of NetCDF reading */
 
-    static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
-
+    // static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
+    static float local_ssh2[3][360/12][GRID_POINTS] = {0};
     /*LOOOPING variables*/
 
     /* sum matrix */
 //   static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
     // color relative index and counter
     int color_start_index = color*month_per_color*30;
-    int color_counter = 0;
-    for (int i = color_start_index; i < (color+1)*month_per_color*30; i++) {
-        start[0] = i;
+    int color_end_index = (color+1)*month_per_color*30;
+    int row_start_index = color_start_index + (row_rank * 10);
+    int row_end_index = row_start_index +10;
 
-        if ((retval = nc_get_vara_float(ncid, ssh_id, start,
-                                            count, &local_ssh[counter][0]))) ERR(retval);
-        color_counter++;
+    for (int j = 0; j < month_per_color; j++) {
+        int color_counter = 0;
+
+        for (int i = (j*30)+row_start_index; i < (j*30)+row_end_index; i++) {
+            start[0] = i;
+            if ((retval = nc_get_vara_float(ncid, ssh_id, start,
+                                            count, &local_ssh2[j][color_counter][0]))) ERR(retval);
+            color_counter++;
         }
+    }
 
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid))) ERR(retval);
@@ -165,12 +171,14 @@ int main () {
 
     if (world_rank == 0) {
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
-        printf("local_ssh[0][0] : %lf\n", local_ssh[0][0]);
-        printf("local_ssh[59][8852365] : %lf\n", local_ssh[89][8852365]);
+        printf("local_ssh[0][0] : %lf\n", local_ssh2[0][0][0]);
+    }
+    if ((color == 0) & (row_rank = row_size-1)){
+        printf("local_ssh[59][8852365] : %lf\n", local_ssh2[2][9][8852365]);
     }
     if (world_rank == world_size-1) {
-        printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh[0][0], color);
-        printf("local_ssh[359][8852365] : %lf\n", local_ssh[89][8852365]);
+        // printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh2[0][0], color);
+        printf("local_ssh[359][8852365] : %lf\n", local_ssh2[2][9][8852365]);
     }
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d\n",
            world_rank, world_size, row_rank, row_size, color);
