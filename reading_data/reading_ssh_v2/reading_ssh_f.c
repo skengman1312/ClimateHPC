@@ -111,7 +111,11 @@ int main () {
 
     /* Program variables to hold the data we will read.
     We will need enough space to hold all the timesteps of data. */
-    static float ssh[N_TIME][GRID_POINTS] = {0};
+
+    // static float ssh[N_TIME][GRID_POINTS] = {0};
+
+
+
 
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
@@ -138,14 +142,17 @@ int main () {
     int month_per_color = 12/4; // has to be made relative
     /* end of setup of NetCDF reading */
 
+    static float local_ssh[N_TIME/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
+
     /*LOOOPING variables*/
 
     /* sum matrix */
 //   static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
-    for (int i = color*month_per_color*30; i < (color+1)*month_per_color*30; i++) {
+    int color_start_index = color*month_per_color*30;
+    for (int i = color_start_index; i < (color+1)*month_per_color*30; i++) {
         start[0] = i;
         if ((retval = nc_get_vara_float(ncid, ssh_id, start,
-                                            count, &ssh[i][0]))) ERR(retval);
+                                            count, &local_ssh[i][0]))) ERR(retval);
 
         }
 
@@ -155,12 +162,12 @@ int main () {
 
     if (world_rank == 0) {
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
-        printf("ssh[0][0] : %lf\n", ssh[0][0]);
-        printf("ssh[59][8852365] : %lf\n", ssh[89][8852365]);
+        printf("local_ssh[0][0] : %lf\n", local_ssh[0][0]);
+        printf("local_ssh[59][8852365] : %lf\n", local_ssh[89][8852365]);
     }
     if (world_rank == world_size-1) {
-        printf("ssh[270][0] : %lf  color : %d\n", ssh[color*month_per_color*30][0], color);
-        printf("ssh[359][8852365] : %lf\n", ssh[((color+1)*month_per_color*30)-1][8852365]);
+        printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh[color*month_per_color*30][0], color);
+        printf("local_ssh[359][8852365] : %lf\n", local_ssh[((color+1)*month_per_color*30)-1][8852365]);
     }
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d\n",
            world_rank, world_size, row_rank, row_size, color);
