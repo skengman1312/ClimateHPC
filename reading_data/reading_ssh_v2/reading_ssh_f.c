@@ -212,7 +212,7 @@ int main () {
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
         printf("local_ssh[0][0] : %lf\n", local_ssh[0][0][0]);
     }
-    if ((color == 0) & (row_rank = row_size-1)){
+    if ((color == 0) && (row_rank == row_size-1)){
         printf("local_ssh[59][8852365] : %lf\n", local_ssh[2][9][8852365]);
     }
     if (world_rank == world_size-1) {
@@ -281,14 +281,43 @@ int main () {
     for (int i = 0; i < month_per_color; i++) {
         MPI_Reduce(partition_sum[i], month_average[i], local_dim, MPI_FLOAT, MPI_SUM, 0, row_comm);
     }
-    free(partition_sum)
+    free(partition_sum);
+
+    for (int i = 0; i < month_per_color; i++) {
+        for (int j = 0; j < GRID_POINTS; j++) {
+            month_average[i][j] = month_average[i][j]/30;
+        }
+    }
 
     // Final variable to hold all the months in process 0
     static float res[12][GRID_POINTS] = {0};
+    static float flat_res[12*GRID_POINTS] = {0};
 
-    if (new_rank != -1){
-        printf("Rank %d", world_rank);
+
+    // Workaround for MPI memory requirements
+    float * flat_month_average = (float *) calloc(GRID_POINTS*month_per_color, sizeof(float));
+    for (int i = 0; i < GRID_POINTS*month_per_color; i++) {
+        flat_month_average[i] = month_average[i/GRID_POINTS][i%GRID_POINTS];
     }
+
+    if ((new_rank != -1)){
+
+//        MPI_Gather(flat_month_average, month_per_color * GRID_POINTS, MPI_FLOAT, flat_res, 12*GRID_POINTS, MPI_FLOAT, 0,
+//                   new_comm);
+        printf("Rank %d\n", world_rank);
+    }
+
+//    if (world_rank == 0){
+//        for (int i = 0; i < 12; i++) {
+//            for (int j = 0; j < GRID_POINTS; j++) {
+//                res[i][j] = flat_res[(i*GRID_POINTS)+j] ;
+//
+//            }
+//
+//        }
+//    }
+
+
 
 
 //    for (int i = 0; i < 12; ++i) {
