@@ -6,6 +6,7 @@
 #include <netcdf.h>
 #include<mpi.h>
 #include <sys/time.h>
+#include <stdlib.h>
 /*
 mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_ssh.out reading_ssh.c -lm
 */
@@ -58,6 +59,8 @@ int main () {
     int row_rank, row_size;
     MPI_Comm_rank(row_comm, &row_rank);
     MPI_Comm_size(row_comm, &row_size);
+
+
 
 //    // size across each dimension.
 //    int dim[2] = {30, GRID_POINTS};
@@ -143,7 +146,18 @@ int main () {
     /* end of setup of NetCDF reading */
 
     // static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
-    static float local_ssh2[3][360/12][GRID_POINTS] = {0};
+    // float local_ssh2[month_per_color][360/12][GRID_POINTS] = {{0}};
+    float  ***local_ssh2 = malloc(sizeof(float *) * month_per_color);
+    for (int i = 0; i < month_per_color; i++) {
+        local_ssh2[i] = (float *) malloc(sizeof(float *) * 30/row_size);
+        for (int j = 0; j < 30/row_size; j++) {
+            local_ssh2[i][j] = (float *)calloc(GRID_POINTS ,sizeof(float));
+        }
+
+    }
+
+    // float ( ***local_ssh2) = calloc( month_per_color*GRID_POINTS*(360 * world_size) , sizeof( float ) );
+    // ptr = (cast_type *) calloc (n, size);
     /*LOOOPING variables*/
 
     /* sum matrix */
