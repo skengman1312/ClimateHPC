@@ -61,6 +61,32 @@ int main () {
     MPI_Comm_size(row_comm, &row_size);
 
 
+    // New comm for the last operation
+    MPI_Comm copy_comm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &copy_comm);
+    MPI_Group world_group;
+    MPI_Comm_group(copy_comm, &world_group);
+
+    int n = 4;
+    const int ranks[4] = {0, 3, 6, 9};
+
+    MPI_Group new_group;
+    MPI_Group_incl(world_group, 4, ranks, &new_group);
+
+    // Create new communicator based on group
+
+    MPI_Comm new_comm;
+    MPI_Comm_create(copy_comm, new_group, &new_comm);
+
+    // Get the rank and size in the new communicator
+
+
+    int new_rank = -1, new_size = -1;
+    if (MPI_COMM_NULL != new_comm){
+        MPI_Comm_rank(new_comm, &new_rank);
+        MPI_Comm_size(new_comm, &new_size);
+    }
+
 
 //    // size across each dimension.
 //    int dim[2] = {30, GRID_POINTS};
@@ -220,6 +246,7 @@ int main () {
         partition_sum[i] = (float *) calloc(GRID_POINTS, sizeof(float));}
 
 
+    // Summing up the partition for each month in each process
     for (int k = 0; k < GRID_POINTS ; k++) {
         for (int i = 0; i < month_per_color; i++) {
             for (int j = 0; j < 30/row_size; j++) {
@@ -227,8 +254,41 @@ int main () {
             }
         }
     }
+    free(local_ssh);
+    gettimeofday(timers_end+1, NULL);
+
+    if (world_rank == 0){
+        double temp=time_diff(timers_start+1, timers_end+1);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do partition sum is %lf seconds\n",temp);
+        printf("The time taken to do partition sum is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+    }
+
+
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d \t pa: %lf\n",
            world_rank, world_size, row_rank, row_size, color, partition_sum[0][0]);
+
+    // Creating a variable to store the month average in each process of row rank = 0
+    float  **month_average = malloc(sizeof(float *) * month_per_color);
+    for (int i = 0; i < month_per_color; i++) {
+        month_average[i] = (float *) calloc(GRID_POINTS, sizeof(float));}
+
+
+    // Defining local dimentions for MPI reduce
+    float local_dim= GRID_POINTS  ;
+
+    // Reducing all the partition averages in month averages along rows (member of each color)
+    for (int i = 0; i < month_per_color; i++) {
+        MPI_Reduce(partition_sum[i], month_average[i], local_dim, MPI_FLOAT, MPI_SUM, 0, row_comm);
+    }
+    free(partition_sum)
+
+    // Final variable to hold all the months in process 0
+    static float res[12][GRID_POINTS] = {0};
+
+    if (new_rank != -1){
+        printf("Rank %d", world_rank);
+    }
 
 
 //    for (int i = 0; i < 12; ++i) {
