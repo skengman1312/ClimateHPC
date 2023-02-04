@@ -147,21 +147,20 @@ int main () {
 
     // static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
     // float local_ssh2[month_per_color][360/12][GRID_POINTS] = {{0}};
-    float  ***local_ssh2 = malloc(sizeof(float *) * month_per_color);
-    for (int i = 0; i < month_per_color; i++) {
-        local_ssh2[i] = (float *) malloc(sizeof(float *) * 30/row_size);
-        for (int j = 0; j < 30/row_size; j++) {
-            local_ssh2[i][j] = (float *)calloc(GRID_POINTS ,sizeof(float));
-        }
 
+    // Dynamically allocating the space for local ssh 3D array
+    // It holds the data read by each process
+    float  ***local_ssh = malloc(sizeof(float *) * month_per_color);
+    for (int i = 0; i < month_per_color; i++) {
+        local_ssh[i] = (float *) malloc(sizeof(float *) * 30/row_size);
+        for (int j = 0; j < 30/row_size; j++) {
+            local_ssh[i][j] = (float *)calloc(GRID_POINTS ,sizeof(float));
+        }
     }
 
-    // float ( ***local_ssh2) = calloc( month_per_color*GRID_POINTS*(360 * world_size) , sizeof( float ) );
-    // ptr = (cast_type *) calloc (n, size);
     /*LOOOPING variables*/
-
     /* sum matrix */
-//   static float sum_u_speed[N_NZ1][GRID_POINTS] = {{0}};
+
     // color relative index and counter
     int color_start_index = color*month_per_color*30;
     int color_end_index = (color+1)*month_per_color*30;
@@ -174,7 +173,7 @@ int main () {
         for (int i = (j*30)+row_start_index; i < (j*30)+row_end_index; i++) {
             start[0] = i;
             if ((retval = nc_get_vara_float(ncid, ssh_id, start,
-                                            count, &local_ssh2[j][color_counter][0]))) ERR(retval);
+                                            count, &local_ssh[j][color_counter][0]))) ERR(retval);
             color_counter++;
         }
     }
@@ -185,14 +184,14 @@ int main () {
 
     if (world_rank == 0) {
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
-        printf("local_ssh[0][0] : %lf\n", local_ssh2[0][0][0]);
+        printf("local_ssh[0][0] : %lf\n", local_ssh[0][0][0]);
     }
     if ((color == 0) & (row_rank = row_size-1)){
-        printf("local_ssh[59][8852365] : %lf\n", local_ssh2[2][9][8852365]);
+        printf("local_ssh[59][8852365] : %lf\n", local_ssh[2][9][8852365]);
     }
     if (world_rank == world_size-1) {
         // printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh2[0][0], color);
-        printf("local_ssh[359][8852365] : %lf\n", local_ssh2[2][9][8852365]);
+        printf("local_ssh[359][8852365] : %lf\n", local_ssh[2][9][8852365]);
     }
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d\n",
            world_rank, world_size, row_rank, row_size, color);
@@ -206,13 +205,31 @@ int main () {
         printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
     }
 
+    /*
 
-    float a[12][GRID_POINTS];
-//    for (int i = 0; i < ; ++i) {
-//
-//    }
+      END OF READING
+
+     */
 
     gettimeofday(timers_start+1, NULL);
+
+    // Variable to hold the averages for each month assigned to each process
+    // float partition_sum[month_per_color][GRID_POINTS] = (float *)calloc(GRID_POINTS*month_per_color ,sizeof(float));
+    float  **partition_sum = malloc(sizeof(float *) * month_per_color);
+    for (int i = 0; i < month_per_color; i++) {
+        partition_sum[i] = (float *) calloc(GRID_POINTS, sizeof(float));}
+
+
+    for (int k = 0; k < GRID_POINTS ; k++) {
+        for (int i = 0; i < month_per_color; i++) {
+            for (int j = 0; j < 30/row_size; j++) {
+            partition_sum[i][k] += local_ssh[i][j][k];
+            }
+        }
+    }
+    printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d \t pa: %lf\n",
+           world_rank, world_size, row_rank, row_size, color, partition_sum[0][0]);
+
 
 //    for (int i = 0; i < 12; ++i) {
 //        printf("Iteration number %i\n",i);
