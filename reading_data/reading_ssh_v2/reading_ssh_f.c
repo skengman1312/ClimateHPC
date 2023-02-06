@@ -122,8 +122,8 @@ int main () {
     struct timeval t_timer2_finish;
     struct timeval t_timer3_start;
     struct  t_timer3_finish;
-    struct timeval timers_start[3];
-    struct timeval timers_end[3];
+    struct timeval timers_start[5];
+    struct timeval timers_end[5];
     double t_nc_reading_time ;
     double t_threading_reading_time ;
     double t_nc_reading_time_sum ;
@@ -257,17 +257,16 @@ int main () {
     free(local_ssh);
     gettimeofday(timers_end+1, NULL);
 
+
+
     if (world_rank == 0){
-        double temp=time_diff(timers_start+1, timers_end+1);
-        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to do partition sum is %lf seconds\n",temp);
-        printf("The time taken to do partition sum is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+
     }
 
 
-    printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d \t pa: %lf\n",
-           world_rank, world_size, row_rank, row_size, color, partition_sum[0][0]);
-
+    // printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d \t pa: %lf\n",
+    //       world_rank, world_size, row_rank, row_size, color, partition_sum[0][0]);
+    gettimeofday(timers_start+2, NULL);
     // Creating a variable to store the month average in each process of row rank = 0
     float  **month_average = malloc(sizeof(float *) * month_per_color);
     for (int i = 0; i < month_per_color; i++) {
@@ -288,7 +287,9 @@ int main () {
             month_average[i][j] = month_average[i][j]/30;
         }
     }
+    gettimeofday(timers_end+2, NULL);
 
+    gettimeofday(timers_start+3, NULL);
     // Final variable to hold all the months in process 0
     static float res[12][GRID_POINTS] = {0};
     static float flat_res[12*GRID_POINTS] = {0};
@@ -304,8 +305,10 @@ int main () {
 
         MPI_Gather(flat_month_average, month_per_color * GRID_POINTS, MPI_FLOAT, flat_res, month_per_color * GRID_POINTS, MPI_FLOAT, 0,
                    new_comm);
-        printf("Rank %d\n", world_rank);
+        // printf("Rank %d\n", world_rank);
     }
+    free(flat_month_average);
+    free(month_average);
 
     if (world_rank == 0){
         for (int i = 0; i < 12; i++) {
@@ -316,9 +319,9 @@ int main () {
 
         }
     }
-
+    gettimeofday(timers_end+3, NULL);
     if (world_rank == 0)
-        printf("I am proc 0 and the collected avg is %g, %g, %g\n", res[0][0], res[0][1], res[0][2]);
+        printf("I am proc 0 and the collected avg is %g, %g, %g\n", res[11][0], res[11][1], res[11][2]);
 
 
 
@@ -328,22 +331,21 @@ int main () {
 //        average(ssh+(30*i), 30, a[i]);
 //    }
 
-    if (world_rank == 0){
-        gettimeofday(timers_start+2, NULL);
+    if (world_rank == 0) {
+        gettimeofday(timers_start + 4, NULL);
 
         int y = 1;                                            // indicating time step 1
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
         ERR(retval);
         /*define dimension*/
-        if ((retval = nc_def_dim(ncid2, TIME,  NC_UNLIMITED, &time_new_id)))
-        ERR(retval);
-        if ((retval = nc_def_dim(ncid2, SSH, GRID_POINTS, &gp_new_id)))
-        ERR(retval);
+        if ((retval = nc_def_dim(ncid2, TIME, NC_UNLIMITED, &time_new_id))) ERR(retval);
+        if ((retval = nc_def_dim(ncid2, SSH, GRID_POINTS, &gp_new_id))) ERR(retval);
         int dimid[2];
-        dimid[0]=time_new_id;
-        dimid[1]=gp_new_id;
+        dimid[0] = time_new_id;
+        dimid[1] = gp_new_id;
         /*define variable*/
-        if ((retval = nc_def_var(ncid2, "sea_surface_elevation", NC_FLOAT, 2, dimid, &var_new_id)))// define the varibael
+        if ((retval = nc_def_var(ncid2, "sea_surface_elevation", NC_FLOAT, 2, dimid,
+                                 &var_new_id)))// define the varibael
         ERR(retval);
 //        if ((retval = nc_def_var(ncid2, "time", NC_INT, 1,dimid, &time_var_new_id)))// define the varibael
 //        ERR(retval);
@@ -352,12 +354,10 @@ int main () {
 //                                      strlen(UNITS_time), UNITS_time)))
 //        ERR(retval);
         if ((retval = nc_put_att_text(ncid2, var_new_id, UNITS,
-                                      strlen(UNITS_ssh), UNITS_ssh)))
-        ERR(retval);
+                                      strlen(UNITS_ssh), UNITS_ssh))) ERR(retval);
 
         /* End define mode. */
-        if ((retval = nc_enddef(ncid2)))
-        ERR(retval);
+        if ((retval = nc_enddef(ncid2))) ERR(retval);
 
         size_t start_1[2];
         size_t count_1[2];
@@ -365,11 +365,9 @@ int main () {
         count_1[1] = GRID_POINTS;
         start_1[1] = 0;
 
-        for (int i = 0; i < 12; i++)
-        {
+        for (int i = 0; i < 12; i++) {
             start_1[0] = i;
-            if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&res[i][0])))
-            ERR(retval);
+            if ((retval = nc_put_vara_float(ncid2, var_new_id, start_1, count_1, &res[i][0]))) ERR(retval);
         }
 
 //        if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y)))
@@ -379,80 +377,51 @@ int main () {
 
         /* Close the file. This frees up any internal netCDF resources
         * associated with the file, and flushes any buffers. */
-        if ((retval = nc_close(ncid2)))
-        ERR(retval);
-        gettimeofday(timers_end+2, NULL);
+        if ((retval = nc_close(ncid2))) ERR(retval);
+        gettimeofday(timers_end + 4, NULL);
         t_nc_reading_time_Totalsum = 0;
 
-        double temp=time_diff(timers_start, timers_end);
-        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        double temp = time_diff(timers_start, timers_end);
+        convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
         // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
         // convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to do Nc read is %lf seconds\n",temp);
-        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
-        temp=time_diff(timers_start+1, timers_end+1);
-        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-        printf("The time taken to average all is %lf seconds\n",temp);
-        printf("The time taken to average all is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+        printf("The time taken to do Nc read is %lf seconds\n", temp);
+        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes, t_seconds);
+
+        temp = time_diff(timers_start + 1, timers_end + 1);
+        convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
+        printf("The time taken to do partition sum is %lf seconds\n", temp);
+        printf("The time taken to do partition sum is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
+               t_seconds);
+
+        temp = time_diff(timers_start + 2, timers_end + 2);
+        convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
+        printf("The time taken to do first MPI call on each row %lf seconds\n", temp);
+        printf("The time taken to do first MPI call on each row is %ld hours,%ld minutes,%ld seconds \n", t_hours,
+               t_minutes, t_seconds);
+
+
+        temp = time_diff(timers_start + 3, timers_end + 3);
+        convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
+        printf("The time taken to do second MPI call from each row rank 0 process %lf seconds\n", temp);
+        printf("The time taken to do second MPI call from each row rank 0 process is %ld hours,%ld minutes,%ld seconds \n",
+               t_hours, t_minutes, t_seconds);
+
+        temp = time_diff(timers_start + 1, timers_end + 3);
+        convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
+        printf("The total time taken to average %lf seconds\n", temp);
+        printf("The total time taken to average is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
+               t_seconds);
+
+        temp = time_diff(timers_start + 4, timers_end + 4);
+        convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
+        printf("The time taken to write on NCDF file %lf seconds\n", temp);
+        printf("The time taken to write on NCDF file is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
+               t_seconds);
     }
-    MPI_Finalize();
+
+        MPI_Finalize();
     return 0;
-}
-
-void  average(float local_ssh[][GRID_POINTS], int timeframe, float rbuff[GRID_POINTS]){
-    // /* VARIABLES DEFINE START*/
-    // get the number of processes
-    int world_size;
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-    // get the rank of processes
-    int world_rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-
-    // size across each dimension.
-    int dim[2] = {timeframe, GRID_POINTS};
-    // dimensions of the scattered data received by each process
-    int local_dim[2] = {dim[0] / world_size, dim[1]};
-
-    // receive buffer
-    float rec[local_dim[0]][local_dim[1]];
-    float loc_avg[GRID_POINTS] = {0};
-    //float *avg = malloc(sizeof(local_dim[1])
-    float avg[GRID_POINTS] = {0};
-    int sendcnt = local_dim[0] * local_dim[1]; /* how many items are sent to each process */
-    int recvcnt = local_dim[0] * local_dim[1];
-
-    // printf("local ssh first element: %lf\n", local_ssh[0][0]);
-    // MPI call and functional part
-    MPI_Scatter(local_ssh, sendcnt, MPI_FLOAT,
-                rec, recvcnt, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-    // loading the sum in a vector of size N-points
-    for (int i = 0; i < local_dim[1]; i++){
-        for (int j = 0; j < local_dim[0]; j++) {
-            loc_avg[i] += rec[j][i];
-        }
-    }
-
-    // averaging the sums for every element in the vector
-    for (int i = 0; i < local_dim[1]; ++i) {
-        loc_avg[i] = loc_avg[i] / local_dim[0];
-    }
-
-    printf("My rank is %i and I received from  %g to %g\n", world_rank, rec[0][0],rec[local_dim[0]-1][local_dim[1]-1]);
-    printf("My loc_avg array is %g, %g, %g\n", loc_avg[0], loc_avg[1], loc_avg[2]);
-
-    // reduce with sum operator
-    MPI_Reduce(loc_avg, avg, local_dim[1], MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-    // printf("My rank is %i\n", world_rank);
-    // averaging the results of the several threads to get as single average vector
-    for (int i = 0; i < local_dim[1]; ++i) {
-        rbuff[i] = avg[i]/world_size;
-    }
-    if (world_rank == 0)
-        printf("I am proc 0 and the collected avg is %g, %g, %g\n", rbuff[0], rbuff[1], rbuff[2]);
-
-    return;
 }
 
 double time_diff(struct timeval *start, struct timeval *end)
