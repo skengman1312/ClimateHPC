@@ -302,20 +302,23 @@ int main () {
 
     if ((new_rank != -1)){
 
-//        MPI_Gather(flat_month_average, month_per_color * GRID_POINTS, MPI_FLOAT, flat_res, 12*GRID_POINTS, MPI_FLOAT, 0,
-//                   new_comm);
+        MPI_Gather(flat_month_average, month_per_color * GRID_POINTS, MPI_FLOAT, flat_res, month_per_color * GRID_POINTS, MPI_FLOAT, 0,
+                   new_comm);
         printf("Rank %d\n", world_rank);
     }
 
-//    if (world_rank == 0){
-//        for (int i = 0; i < 12; i++) {
-//            for (int j = 0; j < GRID_POINTS; j++) {
-//                res[i][j] = flat_res[(i*GRID_POINTS)+j] ;
-//
-//            }
-//
-//        }
-//    }
+    if (world_rank == 0){
+        for (int i = 0; i < 12; i++) {
+            for (int j = 0; j < GRID_POINTS; j++) {
+                res[i][j] = flat_res[(i*GRID_POINTS)+j] ;
+
+            }
+
+        }
+    }
+
+    if (world_rank == 0)
+        printf("I am proc 0 and the collected avg is %g, %g, %g\n", res[0][0], res[0][1], res[0][2]);
 
 
 
@@ -324,76 +327,74 @@ int main () {
 //        printf("Iteration number %i\n",i);
 //        average(ssh+(30*i), 30, a[i]);
 //    }
-//    gettimeofday(timers_end+1, NULL);
-//    if (world_rank == 0){
-//        gettimeofday(timers_start+2, NULL);
-//        printf("a[0][0] : %lf\n", a[0][0]);
-//        printf("a[1][0] : %lf\n", a[1][0]);
-//
-//        int y = 1;                                            // indicating time step 1
-//        if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
-//        ERR(retval);
-//        /*define dimension*/
-//        if ((retval = nc_def_dim(ncid2, TIME,  NC_UNLIMITED, &time_new_id)))
-//        ERR(retval);
-//        if ((retval = nc_def_dim(ncid2, SSH, GRID_POINTS, &gp_new_id)))
-//        ERR(retval);
-//        int dimid[2];
-//        dimid[0]=time_new_id;
-//        dimid[1]=gp_new_id;
-//        /*define variable*/
-//        if ((retval = nc_def_var(ncid2, "sea_surface_elevation", NC_FLOAT, 2, dimid, &var_new_id)))// define the varibael
-//        ERR(retval);
-////        if ((retval = nc_def_var(ncid2, "time", NC_INT, 1,dimid, &time_var_new_id)))// define the varibael
-////        ERR(retval);
-////
-////        if ((retval = nc_put_att_text(ncid2, time_var_new_id, UNITS,
-////                                      strlen(UNITS_time), UNITS_time)))
-////        ERR(retval);
-//        if ((retval = nc_put_att_text(ncid2, var_new_id, UNITS,
-//                                      strlen(UNITS_ssh), UNITS_ssh)))
+
+    if (world_rank == 0){
+        gettimeofday(timers_start+2, NULL);
+
+        int y = 1;                                            // indicating time step 1
+        if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
+        ERR(retval);
+        /*define dimension*/
+        if ((retval = nc_def_dim(ncid2, TIME,  NC_UNLIMITED, &time_new_id)))
+        ERR(retval);
+        if ((retval = nc_def_dim(ncid2, SSH, GRID_POINTS, &gp_new_id)))
+        ERR(retval);
+        int dimid[2];
+        dimid[0]=time_new_id;
+        dimid[1]=gp_new_id;
+        /*define variable*/
+        if ((retval = nc_def_var(ncid2, "sea_surface_elevation", NC_FLOAT, 2, dimid, &var_new_id)))// define the varibael
+        ERR(retval);
+//        if ((retval = nc_def_var(ncid2, "time", NC_INT, 1,dimid, &time_var_new_id)))// define the varibael
 //        ERR(retval);
 //
-//        /* End define mode. */
-//        if ((retval = nc_enddef(ncid2)))
+//        if ((retval = nc_put_att_text(ncid2, time_var_new_id, UNITS,
+//                                      strlen(UNITS_time), UNITS_time)))
 //        ERR(retval);
-//
-//        size_t start_1[2];
-//        size_t count_1[2];
-//        count_1[0] = 1;
-//        count_1[1] = GRID_POINTS;
-//        start_1[1] = 0;
-//
-//        for (int i = 0; i < 12; i++)
-//        {
-//            start_1[0] = i;
-//            if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&a[i][0])))
-//            ERR(retval);
-//        }
-//
-////        if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y)))
-////        ERR(retval);
-////        if ((retval = nc_put_var_float(ncid2, var_new_id, &avg[0])))
-////        ERR(retval);
-//
-//        /* Close the file. This frees up any internal netCDF resources
-//        * associated with the file, and flushes any buffers. */
-//        if ((retval = nc_close(ncid2)))
+        if ((retval = nc_put_att_text(ncid2, var_new_id, UNITS,
+                                      strlen(UNITS_ssh), UNITS_ssh)))
+        ERR(retval);
+
+        /* End define mode. */
+        if ((retval = nc_enddef(ncid2)))
+        ERR(retval);
+
+        size_t start_1[2];
+        size_t count_1[2];
+        count_1[0] = 1;
+        count_1[1] = GRID_POINTS;
+        start_1[1] = 0;
+
+        for (int i = 0; i < 12; i++)
+        {
+            start_1[0] = i;
+            if ((retval = nc_put_vara_float(ncid2,var_new_id, start_1, count_1,&res[i][0])))
+            ERR(retval);
+        }
+
+//        if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y)))
 //        ERR(retval);
-//        gettimeofday(timers_end+2, NULL);
-//        t_nc_reading_time_Totalsum = 0;
-//
-//        double temp=time_diff(timers_start, timers_end);
-//        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-//        // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
-//        // convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
-//        printf("The time taken to do Nc read is %lf seconds\n",temp);
-//        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
-//        temp=time_diff(timers_start+1, timers_end+1);
-//        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
-//        printf("The time taken to average all is %lf seconds\n",temp);
-//        printf("The time taken to average all is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
-//    }
+//        if ((retval = nc_put_var_float(ncid2, var_new_id, &avg[0])))
+//        ERR(retval);
+
+        /* Close the file. This frees up any internal netCDF resources
+        * associated with the file, and flushes any buffers. */
+        if ((retval = nc_close(ncid2)))
+        ERR(retval);
+        gettimeofday(timers_end+2, NULL);
+        t_nc_reading_time_Totalsum = 0;
+
+        double temp=time_diff(timers_start, timers_end);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
+        // convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do Nc read is %lf seconds\n",temp);
+        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+        temp=time_diff(timers_start+1, timers_end+1);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to average all is %lf seconds\n",temp);
+        printf("The time taken to average all is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+    }
     MPI_Finalize();
     return 0;
 }
