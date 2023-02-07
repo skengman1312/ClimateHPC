@@ -49,7 +49,9 @@ int main () {
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    int color = world_rank / 3; // Determine color based on row
+
+    int month_per_color = 12/4; // fixed number of four colors
+    int color = world_rank / (world_size/4); // Determine color based on row; we want four colors total
 
     // Split the communicator based on the color and use the
     // original rank for ordering
@@ -68,7 +70,19 @@ int main () {
     MPI_Comm_group(copy_comm, &world_group);
 
     int n = 4;
-    const int ranks[4] = {0, 3, 6, 9};
+
+    // int ranks[4] = {0, 3, 6, 9};
+    int ranks[4] ={0};
+    int i = 0;
+    int j = 0;
+    while (i++ < world_size ){
+        if (i % (world_size/4) == 0)
+            ranks[j] = i;
+            j++;
+        if (world_rank == 0)
+            printf("%d\t%d\n", i, ranks[j]);
+    }
+
 
     MPI_Group new_group;
     MPI_Group_incl(world_group, 4, ranks, &new_group);
@@ -172,7 +186,8 @@ int main () {
     start[0] = 0;
     start[1] = 0;
 
-    int month_per_color = 12/4; // has to be made relative
+
+
     /* end of setup of NetCDF reading */
 
     // static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
