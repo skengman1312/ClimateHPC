@@ -124,6 +124,8 @@ int main () {
     struct  t_timer3_finish;
     struct timeval timers_start[5];
     struct timeval timers_end[5];
+    double walltimes_start[5];
+    double walltimes_end[5];
     double t_nc_reading_time ;
     double t_threading_reading_time ;
     double t_nc_reading_time_sum ;
@@ -150,6 +152,8 @@ int main () {
     size_t start[NDIMS], count[NDIMS];
 
     gettimeofday(timers_start, NULL);
+    walltimes_start[0] = MPI_Wtime();
+
     /* Open the file. */
     if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid))) ERR(retval);
 
@@ -224,6 +228,8 @@ int main () {
 
     // End of I
     gettimeofday(timers_end, NULL);
+    walltimes_end[0] = MPI_Wtime();
+
     if (world_rank == 0){
         double temp=time_diff(timers_start, timers_end);
         convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
@@ -238,6 +244,7 @@ int main () {
      */
 
     gettimeofday(timers_start+1, NULL);
+    walltimes_start[1] = MPI_Wtime();
 
     // Variable to hold the averages for each month assigned to each process
     // float partition_sum[month_per_color][GRID_POINTS] = (float *)calloc(GRID_POINTS*month_per_color ,sizeof(float));
@@ -256,7 +263,7 @@ int main () {
     }
     free(local_ssh);
     gettimeofday(timers_end+1, NULL);
-
+    walltimes_end[1] = MPI_Wtime();
 
 
     if (world_rank == 0){
@@ -267,6 +274,7 @@ int main () {
     // printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d \t pa: %lf\n",
     //       world_rank, world_size, row_rank, row_size, color, partition_sum[0][0]);
     gettimeofday(timers_start+2, NULL);
+    walltimes_start[2] = MPI_Wtime();
     // Creating a variable to store the month average in each process of row rank = 0
     float  **month_average = malloc(sizeof(float *) * month_per_color);
     for (int i = 0; i < month_per_color; i++) {
@@ -287,9 +295,12 @@ int main () {
             month_average[i][j] = month_average[i][j]/30;
         }
     }
+
     gettimeofday(timers_end+2, NULL);
+    walltimes_end[2] = MPI_Wtime();
 
     gettimeofday(timers_start+3, NULL);
+    walltimes_start[3] = MPI_Wtime();
     // Final variable to hold all the months in process 0
     static float res[12][GRID_POINTS] = {0};
     static float flat_res[12*GRID_POINTS] = {0};
@@ -320,6 +331,7 @@ int main () {
         }
     }
     gettimeofday(timers_end+3, NULL);
+    walltimes_end[3] = MPI_Wtime();
     if (world_rank == 0)
         printf("I am proc 0 and the collected avg is %g, %g, %g\n", res[11][0], res[11][1], res[11][2]);
 
@@ -387,18 +399,20 @@ int main () {
         // convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
         printf("The time taken to do Nc read is %lf seconds\n", temp);
         printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes, t_seconds);
+        printf("Total walltime to do Nc read is %lf seconds \n", walltimes_end[0] - walltimes_start[0]);
 
         temp = time_diff(timers_start + 1, timers_end + 1);
         convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
         printf("The time taken to do partition sum is %lf seconds\n", temp);
-        printf("The time taken to do partition sum is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
-               t_seconds);
+        printf("The time taken to do partition sum is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes, t_seconds);
+        printf("Total walltime to do partition sum is %lf seconds \n", walltimes_end[1] - walltimes_start[1]);
 
         temp = time_diff(timers_start + 2, timers_end + 2);
         convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
         printf("The time taken to do first MPI call on each row %lf seconds\n", temp);
         printf("The time taken to do first MPI call on each row is %ld hours,%ld minutes,%ld seconds \n", t_hours,
                t_minutes, t_seconds);
+        printf("Total walltime to do first MPI call on each row is %lf seconds \n", walltimes_end[2] - walltimes_start[2]);
 
 
         temp = time_diff(timers_start + 3, timers_end + 3);
@@ -406,18 +420,21 @@ int main () {
         printf("The time taken to do second MPI call from each row rank 0 process %lf seconds\n", temp);
         printf("The time taken to do second MPI call from each row rank 0 process is %ld hours,%ld minutes,%ld seconds \n",
                t_hours, t_minutes, t_seconds);
+        printf("Total walltime to do second MPI call from each row rank 0 process is %lf seconds \n", walltimes_end[3] - walltimes_start[3]);
 
         temp = time_diff(timers_start + 1, timers_end + 3);
         convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
         printf("The total time taken to average %lf seconds\n", temp);
         printf("The total time taken to average is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
                t_seconds);
+        printf("Total walltime to to average is %lf seconds \n", walltimes_end[3] - walltimes_start[1]);
 
         temp = time_diff(timers_start + 4, timers_end + 4);
         convert_time_hour_sec(temp, &t_hours, &t_minutes, &t_seconds);
         printf("The time taken to write on NCDF file %lf seconds\n", temp);
         printf("The time taken to write on NCDF file is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
                t_seconds);
+
     }
 
         MPI_Finalize();
