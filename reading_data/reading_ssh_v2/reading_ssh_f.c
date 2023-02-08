@@ -232,11 +232,11 @@ int main () {
         printf("local_ssh[0][0] : %lf\n", local_ssh[0][0][0]);
     }
     if ((color == 0) && (row_rank == row_size-1)){
-        printf("local_ssh[59][8852365] : %lf\n", local_ssh[2][9][8852365]);
+        printf("local_ssh[59][8852365] : %lf\n", local_ssh[2][partition_size-1][8852365]);
     }
     if (world_rank == world_size-1) {
         // printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh2[0][0], color);
-        printf("local_ssh[359][8852365] : %lf\n", local_ssh[2][9][8852365]);
+        printf("local_ssh[359][8852365] : %lf\n", local_ssh[2][partition_size-1][8852365]);
     }
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d\n",
            world_rank, world_size, row_rank, row_size, color);
