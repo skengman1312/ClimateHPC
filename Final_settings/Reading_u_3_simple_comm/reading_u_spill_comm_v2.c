@@ -26,7 +26,7 @@
 #define UNITS "units"
 #define UNITS_time "s"
 #define NDIMS_wr 3
-#define SPLIT_COMM 4
+#define SPLIT_COMM 2
 /*MACROS end*/
 
 double time_diff(struct timeval *start, struct timeval *end);
