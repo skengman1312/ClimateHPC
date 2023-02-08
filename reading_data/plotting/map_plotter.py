@@ -29,7 +29,8 @@ def map_plot(df, grid, filename="map.png"):
     # print(df_grid.sea_surface_elevation)
     print("KDE")
 
-    plt.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3)
+    # plt.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3)
+    plt.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3, vmin=-1.90, vmax=2)
 
     # plt.scatter(x=df_grid.lon, y=df_grid.lat, c=df_grid.iloc[:,2], s=0.01, cmap='coolwarm')
     plt.colorbar()
@@ -107,6 +108,7 @@ if __name__ == "__main__":
     # unod.head(1_000_000).plot()
     # plt.show()
     # print(vnod.head(10))
-    # map_plot(ssh, grid, filename="shh_map.png")
+    # print(ssh.iloc[0])
+    map_plot(ssh.loc[[11]], grid, filename="shh_map.png")
     # map_plot(unod, grid, filename="unod_map.png")
     # map_plot(vnod, grid, filename="vnod_map.png")

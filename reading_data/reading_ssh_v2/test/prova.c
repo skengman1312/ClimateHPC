@@ -10,15 +10,14 @@
 int main(){
     int l[4] = {0};
     int j = 0;
-    int k = 0;
-    for (int i = 0; i < 12; i++) {
-        printf("%d\n",i);
-        k = i;
-        if (i % 3 == 0) {
-            l[j] = k;
-            j++;
-            printf("%d\t", l[j]);
-        }
+    for (int i = 0; i < 16; i) {
+        printf("%d\t",i);
+        l[j] = i;
+        printf("%d\n", l[j]);
+        j++;
+        i += 4;
+
+
     }
 
     return 0;

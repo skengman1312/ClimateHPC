@@ -28,6 +28,9 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define UNITS "units"
 #define UNITS_time "s"
 
+// tunable parameter for MPI
+#define n_colors 1
+
 /*MACROS end*/
 /*This is a function that measures time using system time val
 We subtract both time instances, and we convert final output in seconds*/
@@ -50,8 +53,8 @@ int main () {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
 
-    int month_per_color = 12/4; // fixed number of four colors
-    int color = world_rank / (world_size/4); // Determine color based on row; we want four colors total
+    int month_per_color = 12/n_colors; // fixed number of four colors
+    int color = world_rank / (world_size/n_colors); // Determine color based on row; we want four colors total
 
     // Split the communicator based on the color and use the
     // original rank for ordering
@@ -71,21 +74,20 @@ int main () {
 
     int n = 4;
 
-    // int ranks[4] = {0, 3, 6, 9};
-    int ranks[4] ={0};
-    int i = 0;
+    // int ranks[n_colors] = {0, 3, 6, 9};
+    // properly setting up the ranks of the processes to be included in the new communicator
+    // (they are the process with row rank == 0)
+    int ranks[n_colors] ={0};
     int j = 0;
-    while (i++ < world_size ){
-        if (i % (world_size/4) == 0)
-            ranks[j] = i;
-            j++;
-        if (world_rank == 0)
-            printf("%d\t%d\n", i, ranks[j]);
+    for (int i = 0; i < world_size; i) {
+        ranks[j] = i;
+        j++;
+        i += row_size;
     }
 
 
     MPI_Group new_group;
-    MPI_Group_incl(world_group, 4, ranks, &new_group);
+    MPI_Group_incl(world_group, n_colors, ranks, &new_group);
 
     // Create new communicator based on group
 
@@ -190,7 +192,7 @@ int main () {
 
     /* end of setup of NetCDF reading */
 
-    // static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
+    // static float local_ssh[360/n_colors][GRID_POINTS] = {0}; // 3 = month_per_color = 12/n_colors to be changed; 12 = worldsize
     // float local_ssh2[month_per_color][360/12][GRID_POINTS] = {{0}};
 
     // Dynamically allocating the space for local ssh 3D array
@@ -207,10 +209,11 @@ int main () {
     /* sum matrix */
 
     // color relative index and counter
+    int partition_size = 30/row_size;
     int color_start_index = color*month_per_color*30;
     int color_end_index = (color+1)*month_per_color*30;
-    int row_start_index = color_start_index + (row_rank * 10);
-    int row_end_index = row_start_index +10;
+    int row_start_index = color_start_index + (row_rank * partition_size);
+    int row_end_index = row_start_index +partition_size;
 
     for (int j = 0; j < month_per_color; j++) {
         int color_counter = 0;
@@ -232,11 +235,11 @@ int main () {
         printf("local_ssh[0][0] : %lf\n", local_ssh[0][0][0]);
     }
     if ((color == 0) && (row_rank == row_size-1)){
-        printf("local_ssh[59][8852365] : %lf\n", local_ssh[2][9][8852365]);
+        printf("local_ssh[59][8852365] : %lf\n", local_ssh[2][partition_size-1][8852365]);
     }
     if (world_rank == world_size-1) {
         // printf("local_ssh[270][0] : %lf  color : %d\n", local_ssh2[0][0], color);
-        printf("local_ssh[359][8852365] : %lf\n", local_ssh[2][9][8852365]);
+        printf("local_ssh[359][8852365] : %lf\n", local_ssh[2][partition_size-1][8852365]);
     }
     printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d   color : %d\n",
            world_rank, world_size, row_rank, row_size, color);
@@ -276,6 +279,7 @@ int main () {
             }
         }
     }
+    // TODO add avg here
     free(local_ssh);
     gettimeofday(timers_end+1, NULL);
     walltimes_end[1] = MPI_Wtime();
