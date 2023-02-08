@@ -206,10 +206,11 @@ int main () {
     /* sum matrix */
 
     // color relative index and counter
+    int partition_size = 30/row_size;
     int color_start_index = color*month_per_color*30;
     int color_end_index = (color+1)*month_per_color*30;
-    int row_start_index = color_start_index + (row_rank * 10);
-    int row_end_index = row_start_index +10;
+    int row_start_index = color_start_index + (row_rank * partition_size);
+    int row_end_index = row_start_index +partition_size;
 
     for (int j = 0; j < month_per_color; j++) {
         int color_counter = 0;
