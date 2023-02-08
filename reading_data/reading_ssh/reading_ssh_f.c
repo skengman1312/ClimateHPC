@@ -5,6 +5,7 @@
 #include <string.h>
 #include <netcdf.h>
 #include<mpi.h>
+#include <sys/time.h>
 /*
 mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4.7.0--gcc-9.1.0/lib -lnetcdf -o reading_ssh.out reading_ssh.c -lm
 */
@@ -28,7 +29,7 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 
 /*MACROS end*/
 /*This is a function that measures time using system time val
-We subtract both time instances and we convert final output in seconds*/
+We subtract both time instances, and we convert final output in seconds*/
 double time_diff(struct timeval *start, struct timeval *end);
 void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *s);
 /*averaging parallelized function*/
@@ -76,6 +77,28 @@ int main () {
     int var_new_id;
 
 
+    /*Time variables to be used to see how much time each process takes*/
+    struct timeval t_timer1_start;/*timer for process 0*/
+    struct timeval t_timer1_finish;
+    struct timeval t_timer2_start;
+    struct timeval t_timer2_finish;
+    struct timeval t_timer3_start;
+    struct  t_timer3_finish;
+    struct timeval timers_start[3];
+    struct timeval timers_end[3];
+    double t_nc_reading_time ;
+    double t_threading_reading_time ;
+    double t_nc_reading_time_sum ;
+    double t_threading_reading_time_sum ;
+    double t_nc_reading_time_Totalsum ;
+    double t_threading_reading_time_Totalsum ;
+    double t_comm_time ;
+    double t_time_from_start;
+    long int t_seconds = 0;
+    long int t_minutes = 0;
+    long int t_hours = 0;
+
+
 
     /* Program variables to hold the data we will read.
     We will need enough space to hold all the timesteps of data. */
@@ -84,6 +107,7 @@ int main () {
     /* The start and count arrays will tell the netCDF library where to read our data. */
     size_t start[NDIMS], count[NDIMS];
     if (world_rank == 0) {
+        gettimeofday(timers_start, NULL);
         /* Open the file. */
         if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid))) ERR(retval);
 
@@ -122,6 +146,7 @@ int main () {
         printf("*** SUCCESS :) reading example %s\n", FILE_NAME);
         // End of I
 
+        gettimeofday(timers_end, NULL);
     }
 
 
@@ -129,11 +154,16 @@ int main () {
 //    for (int i = 0; i < ; ++i) {
 //
 //    }
+
+    gettimeofday(timers_start+1, NULL);
+
     for (int i = 0; i < 12; ++i) {
         printf("Iteration number %i\n",i);
         average(ssh+(30*i), 30, a[i]);
     }
+    gettimeofday(timers_end+1, NULL);
     if (world_rank == 0){
+        gettimeofday(timers_start+2, NULL);
         printf("a[0][0] : %lf\n", a[0][0]);
         printf("a[1][0] : %lf\n", a[1][0]);
 
@@ -187,8 +217,19 @@ int main () {
         * associated with the file, and flushes any buffers. */
         if ((retval = nc_close(ncid2)))
         ERR(retval);
+        gettimeofday(timers_end+2, NULL);
+        t_nc_reading_time_Totalsum = 0;
 
-
+        double temp=time_diff(timers_start, timers_end);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
+        // convert_time_hour_sec(t_nc_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to do Nc read is %lf seconds\n",temp);
+        printf("The time taken to do Nc read is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
+        temp=time_diff(timers_start+1, timers_end+1);
+        convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
+        printf("The time taken to average all is %lf seconds\n",temp);
+        printf("The time taken to average all is %ld hours,%ld minutes,%ld seconds \n", t_hours,t_minutes,t_seconds);
     }
     MPI_Finalize();
     return 0;
