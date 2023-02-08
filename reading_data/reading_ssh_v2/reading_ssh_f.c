@@ -72,15 +72,14 @@ int main () {
     int n = 4;
 
     // int ranks[4] = {0, 3, 6, 9};
+    // properly setting up the ranks of the processes to be included in the new communicator
+    // (they are the process with row rank == 0)
     int ranks[4] ={0};
-    int i = 0;
     int j = 0;
-    while (i++ < world_size ){
-        if (i % (world_size/4) == 0)
-            ranks[j] = i;
-            j++;
-        if (world_rank == 0)
-            printf("%d\t%d\n", i, ranks[j]);
+    for (int i = 0; i < world_size; i) {
+        ranks[j] = i;
+        j++;
+        i += row_size;
     }
 
 
@@ -276,6 +275,7 @@ int main () {
             }
         }
     }
+    // TODO add avg here
     free(local_ssh);
     gettimeofday(timers_end+1, NULL);
     walltimes_end[1] = MPI_Wtime();
