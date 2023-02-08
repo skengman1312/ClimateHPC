@@ -28,6 +28,9 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define UNITS "units"
 #define UNITS_time "s"
 
+// tunable parameter for MPI
+#define n_colors 1
+
 /*MACROS end*/
 /*This is a function that measures time using system time val
 We subtract both time instances, and we convert final output in seconds*/
@@ -50,8 +53,8 @@ int main () {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
 
-    int month_per_color = 12/4; // fixed number of four colors
-    int color = world_rank / (world_size/4); // Determine color based on row; we want four colors total
+    int month_per_color = 12/n_colors; // fixed number of four colors
+    int color = world_rank / (world_size/n_colors); // Determine color based on row; we want four colors total
 
     // Split the communicator based on the color and use the
     // original rank for ordering
@@ -71,10 +74,10 @@ int main () {
 
     int n = 4;
 
-    // int ranks[4] = {0, 3, 6, 9};
+    // int ranks[n_colors] = {0, 3, 6, 9};
     // properly setting up the ranks of the processes to be included in the new communicator
     // (they are the process with row rank == 0)
-    int ranks[4] ={0};
+    int ranks[n_colors] ={0};
     int j = 0;
     for (int i = 0; i < world_size; i) {
         ranks[j] = i;
@@ -84,7 +87,7 @@ int main () {
 
 
     MPI_Group new_group;
-    MPI_Group_incl(world_group, 4, ranks, &new_group);
+    MPI_Group_incl(world_group, n_colors, ranks, &new_group);
 
     // Create new communicator based on group
 
@@ -189,7 +192,7 @@ int main () {
 
     /* end of setup of NetCDF reading */
 
-    // static float local_ssh[360/4][GRID_POINTS] = {0}; // 3 = month_per_color = 12/4 to be changed; 12 = worldsize
+    // static float local_ssh[360/n_colors][GRID_POINTS] = {0}; // 3 = month_per_color = 12/n_colors to be changed; 12 = worldsize
     // float local_ssh2[month_per_color][360/12][GRID_POINTS] = {{0}};
 
     // Dynamically allocating the space for local ssh 3D array
