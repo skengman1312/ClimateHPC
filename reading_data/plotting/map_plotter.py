@@ -75,14 +75,14 @@ def animated_plot(df, grid):
 
 def round_plotting(i, type="ssh"):
     plt.ioff()
-    d = {"ssh": {"title": "Sea Surface Elevation", "cbar": "elevation in meters", "fname": "map_ssh.png"},
-         "unod": {"title": "Horizontal speed", "cbar": "speed in meters per second", "fname": "map_unod.png"}
+    d = {"ssh": {"title": "Sea Surface Elevation", "cbar": "elevation in meters", "fname": "map_ssh.png", "filepath":'../reading_ssh_v2/map_summarized.nc'},
+         "unod": {"title": "Horizontal speed", "cbar": "speed in meters per second", "fname": "map_unod.png", "filepath":'map_summarized_unod.nc'}
          }
     mon = {0: "January", 1: "February", 2: "March", 3: "April", 4: "May", 5: "June",
                      6: "July", 7: "August", 8: "September", 9: "October", 10: "November", 11: "December"}
 
     f3 = Dataset('fesom.mesh.diag.nc')
-    f5 = Dataset('../reading_ssh_v2/map_summarized.nc')
+    f5 = Dataset(d[type]["filepath"])
     m = Basemap(projection='robin', lon_0=0, resolution='c')
     # print(f3)
     # print(f5.variables)
@@ -146,5 +146,5 @@ if __name__ == "__main__":
     # map_plot(ssh.loc[[11]], grid, filename="shh_map.png")
     # map_plot(unod, grid, filename="unod_map.png")
     # map_plot(vnod, grid, filename="vnod_map.png")
-    [round_plotting(i) for i in range(1)]
+    [round_plotting(i, type="unod") for i in range(12)]
 
