@@ -120,7 +120,7 @@ int main (int argc, char *argv[]){
         printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
         printf("##### THE END OF THE RESULT OF INSTANCE %d #####\n ",k);
         printf("\n");
-        net_write(sum_u_speed, k);
+        // net_write(sum_u_speed, k);
         free(sum_u_speed);
 
     }

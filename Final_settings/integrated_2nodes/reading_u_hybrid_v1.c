@@ -176,7 +176,7 @@ int main (int argc, char *argv[]){
             gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
             t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
             /*TIME END T1*/
-            net_write(final_averages,k);
+            // net_write(final_averages,k);
             /**/
             convert_time_hour_sec(t_threading_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken to do the threading is %lf seconds\n",t_threading_reading_time_Totalsum);

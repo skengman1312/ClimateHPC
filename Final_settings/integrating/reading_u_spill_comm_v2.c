@@ -188,7 +188,7 @@ int main (int argc, char *argv[]){
                 printf("TotaL looping time for %lf seconds for a number rows per column equal to %d \n",t_threading_sum/row_size,SPLIT_COMM);
                 printf("##### THE END OF THE RESULT OF INSTANCE %d #####\n ",k);
                 printf("\n");
-                net_write(final_averages,k);
+                // net_write(final_averages,k);
         }
         free(sum_u_speed);
         free(final_averages);

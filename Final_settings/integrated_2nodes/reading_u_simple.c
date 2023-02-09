@@ -173,7 +173,7 @@ int main (int argc, char *argv[]){
             gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
             walltimes_end[0] = MPI_Wtime();
             /*TIME END T1*/
-            net_write(final_averages,k);
+            // net_write(final_averages,k);
             t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
             /*Total time i did the communication between the process*/
             printf("##### THE BEGINING OF THE RESULT OF INSTANCE %d ##### \n",k);
