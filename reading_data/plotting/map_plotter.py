@@ -5,7 +5,9 @@ import seaborn as sns
 import numpy as np
 from sklearn.cluster import KMeans
 import matplotlib.animation as animation
-
+from netCDF4 import Dataset, MFDataset
+from matplotlib import cm
+from mpl_toolkits.basemap import Basemap
 # import geoplot
 
 import matplotlib.pyplot as plt
@@ -64,11 +66,43 @@ def animated_plot(df, grid):
                             ignore_index=False)
         ax.tricontourf(df_grid.lon, df_grid.lat, df_grid.iloc[:, 2], cmap='coolwarm', alpha=0.3, vmin=-1.90, vmax=2)
         # plt.colorbar()
-        plt.title('t = %i: ' % (i+1))
+        plt.title('t = %i: ' % (i + 1))
 
     anim = animation.FuncAnimation(fig, animate, 12, interval=1000, blit=False)
     anim.save('us.gif', writer='imagemagick', fps=1, dpi=1000)
     # plt.show()
+
+
+def round_plotting(i, type="ssh"):
+    plt.ioff()
+    d = {"ssh": {"title": "Sea Surface Elevation", "cbar": "elevation in meters", "fname": "map_ssh.png"},
+         "unod": {"title": "Horizontal speed", "cbar": "speed in meters per second", "fname": "map_unod.png"}
+         }
+    mon = {0: "January", 1: "February", 2: "March", 3: "April", 4: "May", 5: "June",
+                     6: "July", 7: "August", 8: "September", 9: "October", 10: "November", 11: "December"}
+
+    f3 = Dataset('fesom.mesh.diag.nc')
+    f5 = Dataset('../reading_ssh_v2/map_summarized.nc')
+    m = Basemap(projection='robin', lon_0=0, resolution='c')
+    # print(f3)
+    # print(f5.variables)
+    v = list(f5.variables.keys())[0]
+
+    # print(f"Variable: {v}")
+    x, y = m(f3.variables['lon'], f3.variables['lat'])
+    plt.figure(figsize=(15, 10))
+
+    plt.tricontourf(x, y, f5.variables[v][i], cmap='coolwarm', extend='both', alpha=0.5, vmin=-1.90, vmax=2)
+    cbar = plt.colorbar(orientation='horizontal', pad=0.03)
+    cbar.set_label(d[type]["cbar"])
+    m.drawcoastlines()
+    m.drawmapboundary(fill_color='0.9')
+    m.fillcontinents()
+
+    plt.title(f"{mon[i]} {d[type]['title']}")
+    plt.tight_layout()
+    savename = f"final_plots/{mon[i].lower()}_{d[type]['fname']}"
+    plt.savefig(savename, dpi=1000)
 
 
 if __name__ == "__main__":
@@ -109,6 +143,8 @@ if __name__ == "__main__":
     # plt.show()
     # print(vnod.head(10))
     # print(ssh.iloc[0])
-    map_plot(ssh.loc[[11]], grid, filename="shh_map.png")
+    # map_plot(ssh.loc[[11]], grid, filename="shh_map.png")
     # map_plot(unod, grid, filename="unod_map.png")
     # map_plot(vnod, grid, filename="vnod_map.png")
+    [round_plotting(i) for i in range(1)]
+
