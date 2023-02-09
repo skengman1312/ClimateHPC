@@ -60,13 +60,8 @@ int main (int argc, char *argv[]){
     long int t_minutes = 0;
     long int t_hours = 0;
     double temp;
-    /*DYNAMIC ALLOCATION*/
-
     float *u_speed;
     u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
-
-
-    
     /*Creating 1 file for writing everything*/
         /*START creating file */
         if ((retval = nc_create(FILE_NAME2, NC_CLOBBER, &ncid2))) // ncclober to overwrite the file
@@ -98,9 +93,6 @@ int main (int argc, char *argv[]){
     count[2] = GRID_POINTS;/*all gridpoints*/
     start[1] = 0;
     start[2] = 0;
-
-
-
     /* START timer 3 to have calculate total time*/
     gettimeofday(&t_timer3_start, NULL); //start timer of rank0
     for (k = 0;k<N_TIME; k++){
@@ -136,18 +128,11 @@ int main (int argc, char *argv[]){
     convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
     printf("The time taken to paralize everything for all of the files %lf seconds\n",temp);
     printf("The time taken to paralize everything for all of the files %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-    
-
     /*CLOSING FILE*/
     if ((retval = nc_close(ncid)))
         ERR(retval);
     return 0;
 }
-
-
-
-
-
 
 void net_write(float * final_averages, int k){
    int ncid, retval,unod_id;
