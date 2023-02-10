@@ -34,7 +34,6 @@ void convert_time_hour_sec( double seconds, long int *h, long int *m, long int *
 void net_write(float * final_averages,int k);
 void net_write_sep_files(float *final_averages, int k);
 
-
 int main (int argc, char *argv[]){
     /* MPI  inizialization */
     MPI_Init(&argc, &argv);
@@ -62,7 +61,7 @@ int main (int argc, char *argv[]){
     int dimid[2]; // for wrtieing 
     int var_speed_id;// variable speed id 
     size_t start[NDIMS], count[NDIMS];
-    
+
     struct timeval t_timer1_start;/*timer for process 0*/
     struct timeval t_timer1_finish;
     struct timeval t_timer2_start;
@@ -175,6 +174,8 @@ int main (int argc, char *argv[]){
         if (rank == 0){ 
             gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
             t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
+            printf("##### THE BEGINING OF THE RESULT OF INSTANCE %d ##### \n",k);
+
             /*TIME END T1*/
             // net_write(final_averages,k);
             /**/
@@ -189,7 +190,8 @@ int main (int argc, char *argv[]){
             convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
             printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            printf("The end of readin time instance %d \n",k);
+            printf("##### THE END OF THE RESULT OF INSTANCE %d #####\n ",k);
+            printf("\n");        
         }
         free(sum_u_speed);
         free(final_averages);

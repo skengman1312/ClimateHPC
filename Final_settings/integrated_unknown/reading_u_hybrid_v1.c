@@ -21,7 +21,7 @@
 #define GRID_POINTS 8852366
 // #define DEBUG 1
 // for write
-#define FILE_NAME2 "map_summarized_fuldataset_hybrid_v2.nc"
+#define FILE_NAME2 "map_summarized_fuldataset_hybrid_v1.nc"
 #define UNITS_speed "m_s"
 #define UNITS "units"
 #define UNITS_time "s"
@@ -50,7 +50,7 @@ int main (int argc, char *argv[]){
     MPI_Get_processor_name(processor_name, &name_len);
     printf("greetings:  %s, rank %d out of %d processes\n",processor_name, rank, size);
     int rec;
-    int i,j,k;
+    int i,k;
     /*NETCDF id*/
     int ncid;
     int unod_id;
@@ -78,6 +78,9 @@ int main (int argc, char *argv[]){
     long int t_minutes = 0;
     long int t_hours = 0;
     double temp;
+ 
+    float *u_speed;
+    u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
     /*Creating 1 file for writing everything*/
     if(0==rank){
         /*START creating file */
@@ -113,21 +116,10 @@ int main (int argc, char *argv[]){
     {
         limit = N_NZ1;
     }
-    float **u_speed;
-    float *p = calloc(levels_per_proc*GRID_POINTS,sizeof(float));
-    (u_speed) = malloc(levels_per_proc*sizeof(float*));
-    for (i=0; i<levels_per_proc; i++){
-       (u_speed)[i] = &(p[i*GRID_POINTS]);
-    }
-    int count_levels_per_proc=levels_per_proc;
-    if(rank==size-1){
-        count_levels_per_proc = N_NZ1-levels_per_proc*rank;
-        // printf("%dfor the row rank equal to %d \n", count_levels_per_proc,rank);
-    }
     count[0] = 1;/*1 time*/
-    count[1] = count_levels_per_proc;/*1 level*/
+    count[1] = 1;/*1 level*/
     count[2] = GRID_POINTS;/*all gridpoints*/
-    start[1] = rank*levels_per_proc;/*start from level 0 to 18 then 18-29*/
+    // start[1] = 0;
     start[2] = 0;
 
     /* START timer 3 to have calculate total time*/
@@ -150,39 +142,29 @@ int main (int argc, char *argv[]){
             /*TIME START T1*/
             gettimeofday(&t_timer1_start, NULL); //start timer of rank0
         }
+        for (rec = rank * levels_per_proc; rec < limit; rec++){
 
             /*TIME START T2*/
-            if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
+            start[1] = rec;
+            if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0])))
                 ERR(retval);
 
 
 
             /*TIME START T2*/
             gettimeofday(&t_timer2_start, NULL); //start reading timer
-            #pragma omp parallel
-                {
-                    float *S_private;
-                    S_private = (float *)calloc(GRID_POINTS, sizeof(float));
-                    #pragma omp for  private(i, j) 
-                        for (i = 0; i < count_levels_per_proc; i++){
-                            for (j = 0; j < GRID_POINTS; j++){
-                                S_private[j] += u_speed[i][j];
-                            }
-                        }
-                    #pragma omp critical
-                    {
-                        for(int n=0; n<GRID_POINTS; ++n) {
-                            sum_u_speed[n] += S_private[n];
-                        }
-                    }
-                    free(S_private);
-                }
+            #pragma omp for  private(i) 
+            for (i = 0; i < GRID_POINTS;i++){
+                sum_u_speed[i] += u_speed[i]/ N_NZ1;
+            }
             gettimeofday(&t_timer2_finish, NULL);
             /*TIME END T2*/
             
             /* calculate the time take for SUMMING*/
             t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_threading_reading_time_sum+=t_threading_reading_time;
+        }
+
         /*TIME START T2*/
         gettimeofday(&t_timer2_start, NULL); // start communication timer
         MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -196,7 +178,6 @@ int main (int argc, char *argv[]){
             /*TIME END T1*/
             // net_write(final_averages,k);
             /**/
-            printf("##### THE BEGINING OF THE RESULT OF INSTANCE %d ##### \n",k);
             convert_time_hour_sec(t_threading_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken to do the threading is %lf seconds\n",t_threading_reading_time_Totalsum);
             printf("The time taken to do the threading is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
@@ -208,9 +189,8 @@ int main (int argc, char *argv[]){
             convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
             printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            printf("##### THE END OF THE RESULT OF INSTANCE %d #####\n ",k);
-            printf("\n");                
-            }
+            printf("The end of readin time instance %d \n",k);
+        }
         free(sum_u_speed);
         free(final_averages);
     }

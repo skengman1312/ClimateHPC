@@ -196,7 +196,6 @@ int main (int argc, char *argv[]){
             /*TIME END T1*/
             // net_write(final_averages,k);
             /**/
-            printf("##### THE BEGINING OF THE RESULT OF INSTANCE %d ##### \n",k);
             convert_time_hour_sec(t_threading_reading_time_Totalsum,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken to do the threading is %lf seconds\n",t_threading_reading_time_Totalsum);
             printf("The time taken to do the threading is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
@@ -208,9 +207,8 @@ int main (int argc, char *argv[]){
             convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken from start of For loop till the reduce is %lf seconds\n",t_time_from_start);
             printf("The time taken from start of For loop till the reduce is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-            printf("##### THE END OF THE RESULT OF INSTANCE %d #####\n ",k);
-            printf("\n");                
-            }
+            printf("The end of readin time instance %d \n",k);
+        }
         free(sum_u_speed);
         free(final_averages);
     }
