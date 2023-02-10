@@ -29,7 +29,7 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define UNITS_time "s"
 
 // tunable parameter for MPI
-#define n_colors 1
+#define n_colors 3
 
 /*MACROS end*/
 /*This is a function that measures time using system time val
@@ -453,6 +453,7 @@ int main () {
         printf("The time taken to write on NCDF file %lf seconds\n", temp);
         printf("The time taken to write on NCDF file is %ld hours,%ld minutes,%ld seconds \n", t_hours, t_minutes,
                t_seconds);
+        printf("%d & %d & %lf & %lf\n", world_size, world_size/row_size,  walltimes_end[0] - walltimes_start[0], walltimes_end[3] - walltimes_start[1]);
 
     }
 
