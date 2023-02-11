@@ -7,11 +7,11 @@ res = pd.DataFrame([[8.932, 7.586, None],
                     [None, 3.732, None],
                     [6.372, None, None],
                     [4.503, None, 5.726],
-                    [None, None, None]
+                    [None, 2.588, None]
                     ], columns=["group of 2", "group of 3", "group of 4"], index=[6, 8, 9, 10, 12, 15])
 
 if __name__ == "__main__":
-    ypoints = np.array([36.238 / i for i in range(5, 12)])
+    ypoints = np.array([36.238 / i for i in range(5, 17)])
     xpoints = np.array([i for i in range(5, 17)])
     # res.plot()
     # print(res)
