@@ -9,19 +9,19 @@
 
 
 /*MACROS START*/
-#define FILE_NAME "/shares/HPC4DataScience/FESOM2/unod.fesom.2010.nc"
+#define FILE_NAME "/shares/HPC4DataScience/FESOM2/vnod.fesom.2010.nc"
 #define ERR(e) {printf("Error: %s\n", nc_strerror(e)); return 2;} //just simple macro to handle error with NETCDF
 #define ERR_spec(e) {printf("Error: %s\n", nc_strerror(e));} //just simple macro to handle error with NETCDF
 #define HEIGHT_1_NAME "nz1"  // the variable is called nz in the file. I knew it using ncdump command
 #define TIME "time"  // the variable is called time in the file. I knew it using ncdump command
-#define UNOD "unod"  // the variable is called unod in the file. I knew it using ncdump command
+#define UNOD "vnod"  // the variable is called unod in the file. I knew it using ncdump command
 #define N_NZ1 69            // the variable nz1 has 69 entries
 #define N_TIME 12            // the variable time has 12 entries
 #define NDIMS 3
 #define GRID_POINTS 8852366
 #define DEBUG 1
 // for write
-#define FILE_NAME2 "map_summarized_full_dataset_simple_version.nc"
+#define FILE_NAME2 "map_summarized_full_dataset_simple_versionV.nc"
 #define UNITS_speed "m_s"
 #define UNITS "units"
 #define UNITS_time "s"

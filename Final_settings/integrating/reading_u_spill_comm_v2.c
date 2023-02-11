@@ -80,6 +80,8 @@ int main (int argc, char *argv[]){
     /*Time variables to be used to see how much time each process takes*/
     struct timeval t_timer2_start;
     struct timeval t_timer2_finish;
+    struct timeval starttime;
+    struct timeval endtime;
     double t_start = 0;
     double t_finish = 0;
     double t_threading = 0;
@@ -90,6 +92,13 @@ int main (int argc, char *argv[]){
     long int t_hours = 0;
     double walltimes_start[2];
     double walltimes_end[2];
+    double passing_time = 0;
+    double nc_reading ; //variable containing the local sum of all elapsed time for reading
+    double threading_time = 0;  //variable containing the local sum of all elapsed time for writing the sum matrix
+    double sum_nc_reading;        // variable containing the output of reduce operation, collecting all reading times of different processes
+    double sum_threading_time; // variable containing the output of reduce operation, collecting all elaboration times of different processes
+    double total_time_reading=0;
+    double total_time_threading=0;
     /*Creating 1 file for writing everything*/
     if(0==rank){
         /*START creating file */
@@ -144,12 +153,13 @@ int main (int argc, char *argv[]){
         sum_u_speed = (float *) calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
         final_averages =(float *) calloc(GRID_POINTS, sizeof(float));
-        // t_time_from_start = 0;
         if (sum_u_speed == NULL || final_averages == NULL) {
             printf("A Problem will occur now ");
         }       
         start[0] = k;
         t_threading_sum = 0;
+        nc_reading = 0;
+        threading_time = 0;
 
         /*THREADING*/
         t_start = omp_get_wtime();
@@ -159,14 +169,24 @@ int main (int argc, char *argv[]){
         start[2] = 0;
         for (j = row_rank * levels_per_proc;j< limit; j++){
             start[1] = j;
+            gettimeofday(&starttime, NULL); //start reading timer
             if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0])))
             ERR(retval);
+            gettimeofday(&endtime, NULL); //start reading timer
+            passing_time = time_diff(&starttime, &endtime);
+            nc_reading += passing_time;
+            gettimeofday(&starttime, NULL); //start reading timer
             for (i = 0; i < GRID_POINTS;i++){
                 sum_u_speed[i] += u_speed[i]/ N_NZ1;
             }
+            gettimeofday(&endtime, NULL); //start reading timer
+            passing_time = time_diff(&starttime, &endtime);
+            threading_time += passing_time;
         }
         t_finish = omp_get_wtime();
         t_threading = t_finish - t_start;
+        MPI_Reduce(&nc_reading, &sum_nc_reading, 1, MPI_DOUBLE, MPI_SUM, 0, row_comm);
+        MPI_Reduce(&threading_time, &sum_threading_time, 1, MPI_DOUBLE, MPI_SUM, 0, row_comm);
 
         /*REDUCE*/
         gettimeofday(&t_timer2_start, NULL); // start communication timer
@@ -177,14 +197,15 @@ int main (int argc, char *argv[]){
 
         if(row_rank==0){
                 // net_write_sep_files(final_averages,k);
-                // gettimeofday(&t_timer1_finish, NULL); //start timer of rank0  
+                total_time_reading += sum_nc_reading / row_size;
+                total_time_threading += sum_threading_time / row_size;
                 walltimes_end[0] = MPI_Wtime();  
-                // t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
                 convert_time_hour_sec(t_reducing,&t_hours,&t_minutes,&t_seconds);
                 printf("##### THE BEGINING OF THE RESULT OF INSTANCE %d ##### \n",k);
                 printf("The time taken to do 3 MPI REDUCE is %lfseconds \n",t_reducing);
                 printf("The time taken to do 3 MPI REDUCE is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
-
+                printf("Average reading time per process: %.7f\n", sum_nc_reading / row_size);
+                printf("Average threading time per process: %.7f\n\n", sum_threading_time / row_size);
                 printf("TotaL looping time for %lf seconds for a number rows per column equal to %d \n",t_threading_sum/row_size,SPLIT_COMM);
                 printf("##### THE END OF THE RESULT OF INSTANCE %d #####\n ",k);
                 printf("\n");
@@ -197,7 +218,9 @@ int main (int argc, char *argv[]){
         walltimes_end[1] = MPI_Wtime();
         /*TIME END 3*/
          printf("####THIS IS THE FINAL RESULTSSSS###\n");
-         printf("Total walltime from the begining till the end for ALL time step is %lf seconds \n", walltimes_end[1] - walltimes_start[1]);
+        printf("Average reading time per process over X month: %.7f\n", total_time_reading / time_per_proc);
+        printf("Average threading time per process over X month: %.7f\n\n", total_time_threading / time_per_proc);
+        printf("Total walltime from the begining till the end for ALL time step is %lf seconds \n", walltimes_end[1] - walltimes_start[1]);
     }
 
     /*CLOSING FILE*/

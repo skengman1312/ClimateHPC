@@ -72,6 +72,9 @@ int main (int argc, char *argv[]){
     struct timeval t_timer2_finish;
     struct timeval t_timer3_start;
     struct timeval t_timer3_finish;
+    struct timeval starttime;
+    struct timeval endtime;
+
     // double t_threading_reading_time ;
     // double t_threading_reading_time_Totalsum ;
     double walltimes_start[2];
@@ -82,7 +85,13 @@ int main (int argc, char *argv[]){
     long int t_minutes = 0;
     long int t_hours = 0;
     double temp;
- 
+    double passing_time = 0;
+    double nc_reading ; //variable containing the local sum of all elapsed time for reading
+    double threading_time = 0;  //variable containing the local sum of all elapsed time for writing the sum matrix
+    double sum_nc_reading;        // variable containing the output of reduce operation, collecting all reading times of different processes
+    double sum_threading_time; // variable containing the output of reduce operation, collecting all elaboration times of different processes
+    double total_time_reading=0;
+    double total_time_threading=0;
     float *u_speed;
     u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
     /*Creating 1 file for writing everything*/
@@ -108,12 +117,11 @@ int main (int argc, char *argv[]){
             ERR(retval);
         /*END creating file */
     }
-    
+
     if ((retval = nc_open(FILE_NAME, NC_NOWRITE, &ncid)))
     ERR(retval);
     if ((retval = nc_inq_varid(ncid, UNOD, &unod_id)))
     ERR(retval);
-
     int levels_per_proc = ceil((double)N_NZ1 / size);/*if 2.3 is passed to ceil(), it will return 3*/
 
     int limit = (rank + 1) * levels_per_proc;
@@ -121,7 +129,6 @@ int main (int argc, char *argv[]){
     {
         limit = N_NZ1;
     }
-
     count[0] = 1;/*1 time*/
     count[1] = 1;/*1 level*/
     count[2] = GRID_POINTS;/*all gridpoints*/
@@ -139,7 +146,9 @@ int main (int argc, char *argv[]){
         // t_threading_reading_time_Totalsum = 0;
         t_comm_time = 0 ;
         t_time_from_start = 0;
-        float * sum_u_speed;
+        nc_reading = 0;
+        threading_time = 0;
+        float *sum_u_speed;
         sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
         final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
@@ -152,13 +161,22 @@ int main (int argc, char *argv[]){
         }
         for (rec = rank * levels_per_proc; rec < limit; rec++){
             start[1] = rec;
+            gettimeofday(&starttime, NULL); //start reading timer
             if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0])))
                 ERR(retval);
+            gettimeofday(&endtime, NULL); //start reading timer
+            passing_time = time_diff(&starttime, &endtime);
+            nc_reading += passing_time;
+            gettimeofday(&starttime, NULL); //start reading timer
             for (i = 0; i < GRID_POINTS;i++){
                 sum_u_speed[i] += u_speed[i]/ N_NZ1;
             }
+            gettimeofday(&endtime, NULL); //start reading timer
+            passing_time = time_diff(&starttime, &endtime);
+            threading_time += passing_time;
         }
-
+        MPI_Reduce(&nc_reading, &sum_nc_reading, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&threading_time, &sum_threading_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
         /*TIME START T2*/
         gettimeofday(&t_timer2_start, NULL); // start communication timer
@@ -174,6 +192,8 @@ int main (int argc, char *argv[]){
             walltimes_end[0] = MPI_Wtime();
             /*TIME END T1*/
             // net_write(final_averages,k);
+            total_time_reading += sum_nc_reading / size;
+            total_time_threading += sum_threading_time / size;
             t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
             /*Total time i did the communication between the process*/
             printf("##### THE BEGINING OF THE RESULT OF INSTANCE %d ##### \n",k);
@@ -181,6 +201,8 @@ int main (int argc, char *argv[]){
             printf("The time taken to do 3 MPI REDUCE is %lfseconds \n",t_comm_time);
             printf("The time taken to do 3 MPI REDUCE is %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
             
+            printf("Average reading time per process: %.7f\n", sum_nc_reading / size);
+            printf("Average threading time per process: %.7f\n\n", sum_threading_time / size);
             /*Total time for the code*/
             convert_time_hour_sec(t_time_from_start,&t_hours,&t_minutes,&t_seconds);
             printf("The time taken from start of For loop till the reduce for 1 time step is %lf seconds\n",t_time_from_start);
@@ -199,6 +221,8 @@ int main (int argc, char *argv[]){
         temp=time_diff(&t_timer3_start, &t_timer3_finish);
         convert_time_hour_sec(temp,&t_hours,&t_minutes,&t_seconds);
         printf("####THIS IS THE FINAL RESULTSSSS###\n");
+        printf("Average reading time per process over 12 month: %.7f\n", total_time_reading / N_TIME);
+        printf("Average threading time per process over 12 month: %.7f\n\n", total_time_threading / N_TIME);
         printf("The time taken to paralize everything for all of the files %lf seconds\n",temp);
         printf("The time taken to paralize everything for all of the files %ld hours,%ld minutes,%ld seconds \n",t_hours,t_minutes,t_seconds);
         printf("Total walltime from the begining till the end for ALL time step is %lf seconds \n", walltimes_end[1] - walltimes_start[1]);
