@@ -29,7 +29,7 @@ mpicc -std=c99 -g -Wall -I /apps/netCDF4.7.0--gcc-9.1.0/include -L /apps/netCDF4
 #define UNITS_time "s"
 
 // tunable parameter for MPI
-#define n_colors 4
+#define n_colors 2
 
 /*MACROS end*/
 /*This is a function that measures time using system time val

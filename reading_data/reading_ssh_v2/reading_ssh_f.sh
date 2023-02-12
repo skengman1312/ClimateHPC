@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -l select=20:ncpus=5:mem=1gb -l place=pack
+#PBS -l select=20:ncpus=5:mem=1gb
 
 
 # set max execution time
