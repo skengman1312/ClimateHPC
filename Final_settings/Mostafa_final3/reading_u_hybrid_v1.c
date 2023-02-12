@@ -89,9 +89,6 @@ int main (int argc, char *argv[]){
     double total_time_threading=0;
     float *u_speed;
     u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
-    if (u_speed == NULL) {
-            printf("A Problem will occur now ");
-        }       
     /*Creating 1 file for writing everything*/
     if(0==rank){
         /*START creating file */
@@ -150,9 +147,6 @@ int main (int argc, char *argv[]){
         sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
         final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
-        if (sum_u_speed == NULL || final_averages == NULL) {
-            printf("A Problem will occur now ");
-        }       
         if (rank == 0){
             printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
             /*TIME START T1*/

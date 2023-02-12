@@ -21,7 +21,7 @@
 #define GRID_POINTS 8852366
 // #define DEBUG 1
 // for write
-#define FILE_NAME2 "map_summarized_fuldataset_hybrid_v1.nc"
+#define FILE_NAME2 "map_summarized_fuldataset_hybrid_v2.nc"
 #define UNITS_speed "m_s"
 #define UNITS "units"
 #define UNITS_time "s"
@@ -50,7 +50,7 @@ int main (int argc, char *argv[]){
     MPI_Get_processor_name(processor_name, &name_len);
     printf("greetings:  %s, rank %d out of %d processes\n",processor_name, rank, size);
     int rec;
-    int i,k;
+    int i,j,k;
     /*NETCDF id*/
     int ncid;
     int unod_id;
@@ -87,11 +87,7 @@ int main (int argc, char *argv[]){
     double sum_threading_time; // variable containing the output of reduce operation, collecting all elaboration times of different processes
     double total_time_reading=0;
     double total_time_threading=0;
-    float *u_speed;
-    u_speed = (float *)calloc(GRID_POINTS, sizeof(float));
-    if (u_speed == NULL) {
-            printf("A Problem will occur now ");
-        }       
+    // float *u_speed;
     /*Creating 1 file for writing everything*/
     if(0==rank){
         /*START creating file */
@@ -127,10 +123,21 @@ int main (int argc, char *argv[]){
     {
         limit = N_NZ1;
     }
+    float **u_speed;
+    float *p = calloc(levels_per_proc*GRID_POINTS,sizeof(float));
+    (u_speed) = malloc(levels_per_proc*sizeof(float*));
+    for (i=0; i<levels_per_proc; i++){
+       (u_speed)[i] = &(p[i*GRID_POINTS]);
+    }
+    int count_levels_per_proc=levels_per_proc;
+    if(rank==size-1){
+        count_levels_per_proc = N_NZ1-levels_per_proc*rank;
+        // printf("%dfor the row rank equal to %d \n", count_levels_per_proc,rank);
+    }
     count[0] = 1;/*1 time*/
-    count[1] = 1;/*1 level*/
+    count[1] = count_levels_per_proc;/*1 level*/
     count[2] = GRID_POINTS;/*all gridpoints*/
-    // start[1] = 0;
+    start[1] = rank*levels_per_proc;/*start from level 0 to 18 then 18-29*/
     start[2] = 0;
 
     /* START timer 3 to have calculate total time*/
@@ -150,37 +157,45 @@ int main (int argc, char *argv[]){
         sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
         final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
-        if (sum_u_speed == NULL || final_averages == NULL) {
-            printf("A Problem will occur now ");
-        }       
         if (rank == 0){
             printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
             /*TIME START T1*/
             gettimeofday(&t_timer1_start, NULL); //start timer of rank0
         }
-        for (rec = rank * levels_per_proc; rec < limit; rec++){
 
             /*TIME START T2*/
-            start[1] = rec;
             gettimeofday(&starttime, NULL); //start reading timer
-            if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0])))
+            if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
                 ERR(retval);
             gettimeofday(&endtime, NULL); //start reading timer
             passing_time = time_diff(&starttime, &endtime);
             nc_reading += passing_time;
             /*TIME START T2*/
             gettimeofday(&t_timer2_start, NULL); //start reading timer
-            #pragma omp for  private(i) 
-            for (i = 0; i < GRID_POINTS;i++){
-                sum_u_speed[i] += u_speed[i]/ N_NZ1;
-            }
+            #pragma omp parallel
+                {
+                    float *S_private;
+                    S_private = (float *)calloc(GRID_POINTS, sizeof(float));
+                    #pragma omp for  private(i, j) schedule(dynamic)
+                        for (i = 0; i < count_levels_per_proc; i++){
+                            for (j = 0; j < GRID_POINTS; j++){
+                                S_private[j] += u_speed[i][j];
+                            }
+                        }
+                    #pragma omp critical
+                    {
+                        for(int n=0; n<GRID_POINTS; ++n) {
+                            sum_u_speed[n] += S_private[n];
+                        }
+                    }
+                    free(S_private);
+                }
             gettimeofday(&t_timer2_finish, NULL);
             /*TIME END T2*/
             
             /* calculate the time take for SUMMING*/
             t_threading_reading_time = time_diff(&t_timer2_start, &t_timer2_finish);
             t_threading_reading_time_sum+=t_threading_reading_time;
-        }
         MPI_Reduce(&nc_reading, &sum_nc_reading, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);        
         MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
