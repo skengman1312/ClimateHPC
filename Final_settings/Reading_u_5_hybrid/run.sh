@@ -8,7 +8,8 @@ cd ${PBS_O_WORKDIR}
 module load gcc91
 module load mpich-3.2.1--gcc-9.1.0
 # module load hwloc-2.0.4
-module load openmpi-4.0.4
+# module load openmpi-4.0.4
+module load openmpi-3.0.0
 module load netcdf-4.7.0--gcc-9.1.0
 module load hdf5-1.10.5--gcc-9.1.0
 module list

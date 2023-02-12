@@ -125,7 +125,13 @@ int main (int argc, char *argv[]){
     }
     float **u_speed;
     float *p = calloc(levels_per_proc*GRID_POINTS,sizeof(float));
+    if (p == NULL) {
+            printf("A Problem will occur now ");
+    }       
     (u_speed) = malloc(levels_per_proc*sizeof(float*));
+    if (p == NULL ||u_speed ==NULL) {
+            printf("A Problem will occur now ");
+    }       
     for (i=0; i<levels_per_proc; i++){
        (u_speed)[i] = &(p[i*GRID_POINTS]);
     }
@@ -157,6 +163,9 @@ int main (int argc, char *argv[]){
         sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
         final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
+        if (sum_u_speed == NULL || final_averages == NULL) {
+            printf("A Problem will occur now ");
+        }       
         if (rank == 0){
             printf("Number of processes: %d (levels being read for each process: %d)\n", size, levels_per_proc);
             /*TIME START T1*/
@@ -176,6 +185,9 @@ int main (int argc, char *argv[]){
                 {
                     float *S_private;
                     S_private = (float *)calloc(GRID_POINTS, sizeof(float));
+                    if (S_private == NULL ) {
+                    printf("A Problem will occur now ");
+                    }       
                     #pragma omp for  private(i, j) 
                         for (i = 0; i < count_levels_per_proc; i++){
                             for (j = 0; j < GRID_POINTS; j++){

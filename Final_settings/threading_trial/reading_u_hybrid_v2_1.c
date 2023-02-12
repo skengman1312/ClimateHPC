@@ -176,7 +176,7 @@ int main (int argc, char *argv[]){
                 {
                     float *S_private;
                     S_private = (float *)calloc(GRID_POINTS, sizeof(float));
-                    #pragma omp for  private(i, j) 
+                    #pragma omp for  private(i, j) schedule(static)
                         for (i = 0; i < count_levels_per_proc; i++){
                             for (j = 0; j < GRID_POINTS; j++){
                                 S_private[j] += u_speed[i][j];

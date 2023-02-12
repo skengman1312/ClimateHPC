@@ -164,19 +164,18 @@ int main (int argc, char *argv[]){
         }
 
             /*TIME START T2*/
-            gettimeofday(&starttime, NULL); //start reading timer
             if ((retval = nc_get_vara_float(ncid, unod_id, start, count, &u_speed[0][0])))
                 ERR(retval);
-            gettimeofday(&endtime, NULL); //start reading timer
-            passing_time = time_diff(&starttime, &endtime);
-            nc_reading += passing_time;
+
+
+
             /*TIME START T2*/
             gettimeofday(&t_timer2_start, NULL); //start reading timer
             #pragma omp parallel
                 {
                     float *S_private;
                     S_private = (float *)calloc(GRID_POINTS, sizeof(float));
-                    #pragma omp for  private(i, j) 
+                    #pragma omp for  private(i, j) schedule(guided)
                         for (i = 0; i < count_levels_per_proc; i++){
                             for (j = 0; j < GRID_POINTS; j++){
                                 S_private[j] += u_speed[i][j];
@@ -201,14 +200,13 @@ int main (int argc, char *argv[]){
 
         /*TIME START T2*/
         gettimeofday(&t_timer2_start, NULL); // start communication timer
+        MPI_Reduce(&t_threading_reading_time_sum, &t_threading_reading_time_Totalsum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         MPI_Reduce(sum_u_speed, final_averages,GRID_POINTS, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);    
         gettimeofday(&t_timer2_finish, NULL);
         /*TIME END T2*/
         t_comm_time=time_diff(&t_timer2_start, &t_timer2_finish);
         if (rank == 0){ 
             gettimeofday(&t_timer1_finish, NULL); //start timer of rank0
-            total_time_reading += sum_nc_reading / size;
-            total_time_threading += t_threading_reading_time_Totalsum / size;
             t_time_from_start=time_diff(&t_timer1_start, &t_timer1_finish);
             /*TIME END T1*/
             // net_write(final_averages,k);

@@ -1,9 +1,9 @@
 #!/bin/bash
 #PBS -N run_reading_u_simple
-#PBS -l select=3:ncpus=3:mem=8gb -l place=pack:excl
+#PBS -l select=3:ncpus=3:mem=8gb 
 #PBS -j oe
 # set max execution time
-#PBS -l walltime=0:30:00
+#PBS -l walltime=0:50:00
 
 # set the excution on the short queue
 #PBS -q short_cpuQ

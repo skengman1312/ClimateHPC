@@ -82,7 +82,7 @@ int main (int argc, char *argv[]){
     double temp;
     double passing_time = 0;
     double nc_reading ; //variable containing the local sum of all elapsed time for reading
-    double threading_time = 0;  //variable containing the local sum of all elapsed time for writing the sum matrix
+    // double threading_time = 0;  //variable containing the local sum of all elapsed time for writing the sum matrix
     double sum_nc_reading;        // variable containing the output of reduce operation, collecting all reading times of different processes
     double sum_threading_time; // variable containing the output of reduce operation, collecting all elaboration times of different processes
     double total_time_reading=0;
@@ -153,7 +153,7 @@ int main (int argc, char *argv[]){
         t_time_from_start = 0;
         float * sum_u_speed;
         nc_reading = 0;
-        threading_time = 0;
+        // threading_time = 0;
         sum_u_speed = (float*)calloc(GRID_POINTS, sizeof(float));
         float *final_averages;
         final_averages = (float *)calloc(GRID_POINTS, sizeof(float));
@@ -176,7 +176,7 @@ int main (int argc, char *argv[]){
                 {
                     float *S_private;
                     S_private = (float *)calloc(GRID_POINTS, sizeof(float));
-                    #pragma omp for  private(i, j) 
+                    #pragma omp for  private(i, j) collapse(2)
                         for (i = 0; i < count_levels_per_proc; i++){
                             for (j = 0; j < GRID_POINTS; j++){
                                 S_private[j] += u_speed[i][j];
