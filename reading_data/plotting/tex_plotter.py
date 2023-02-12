@@ -20,13 +20,14 @@ if __name__ == "__main__":
     # print(res)
     plt.xticks(range(5, 26, 2))
     plt.plot(xpoints, ypoints, label = "T(serial)/n processes")
-    plt.xlim(2,25)
+    plt.xlim(5,25)
+    plt.ylim(0,10)
     plt.fill_between(x=xpoints, y1= ypoints-0.4, y2= ypoints+0.4, alpha=.1)
     for c in res:
         print(res[c])
         res[c].dropna().plot(marker = ".")
     plt.xlabel("Number of processes")
-    plt.ylabel("Wall-time")
+    plt.ylabel("Wall-time(s)")
     plt.legend()
-
+    plt.savefig("ssh_walltime_plot.png", dpi = 200)
     plt.show()

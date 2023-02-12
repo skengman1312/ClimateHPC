@@ -104,17 +104,6 @@ int main () {
     }
 
 
-//    // size across each dimension.
-//    int dim[2] = {30, GRID_POINTS};
-//    // dimensions of the scattered data received by each process
-//    int local_dim[2] = {dim[0] / world_size, dim[1]};
-//
-//    // receive buffer
-//    float rec[local_dim[0]][local_dim[1]];
-//    float loc_avg[local_dim[1]];
-//    float avg[local_dim[1]];
-//    int sendcnt = local_dim[0] * local_dim[1]; /* how many items are sent to each process */
-//    int recvcnt = local_dim[0] * local_dim[1];
 
     /*NETCDF id*/
     int ncid;
@@ -132,24 +121,10 @@ int main () {
 
 
     /*Time variables to be used to see how much time each process takes*/
-    struct timeval t_timer1_start;/*timer for process 0*/
-    struct timeval t_timer1_finish;
-    struct timeval t_timer2_start;
-    struct timeval t_timer2_finish;
-    struct timeval t_timer3_start;
-    struct  t_timer3_finish;
     struct timeval timers_start[5];
     struct timeval timers_end[5];
     double walltimes_start[5];
     double walltimes_end[5];
-    double t_nc_reading_time ;
-    double t_threading_reading_time ;
-    double t_nc_reading_time_sum ;
-    double t_threading_reading_time_sum ;
-    double t_nc_reading_time_Totalsum ;
-    double t_threading_reading_time_Totalsum ;
-    double t_comm_time ;
-    double t_time_from_start;
     long int t_seconds = 0;
     long int t_minutes = 0;
     long int t_hours = 0;
@@ -355,13 +330,6 @@ int main () {
         printf("I am proc 0 and the collected avg is %g, %g, %g\n", res[11][0], res[11][1], res[11][2]);
 
 
-
-
-//    for (int i = 0; i < 12; ++i) {
-//        printf("Iteration number %i\n",i);
-//        average(ssh+(30*i), 30, a[i]);
-//    }
-
     if (world_rank == 0) {
         gettimeofday(timers_start + 4, NULL);
 
@@ -378,12 +346,7 @@ int main () {
         if ((retval = nc_def_var(ncid2, "sea_surface_elevation", NC_FLOAT, 2, dimid,
                                  &var_new_id)))// define the varibael
         ERR(retval);
-//        if ((retval = nc_def_var(ncid2, "time", NC_INT, 1,dimid, &time_var_new_id)))// define the varibael
-//        ERR(retval);
-//
-//        if ((retval = nc_put_att_text(ncid2, time_var_new_id, UNITS,
-//                                      strlen(UNITS_time), UNITS_time)))
-//        ERR(retval);
+
         if ((retval = nc_put_att_text(ncid2, var_new_id, UNITS,
                                       strlen(UNITS_ssh), UNITS_ssh))) ERR(retval);
 
@@ -401,10 +364,6 @@ int main () {
             if ((retval = nc_put_vara_float(ncid2, var_new_id, start_1, count_1, &res[i][0]))) ERR(retval);
         }
 
-//        if ((retval = nc_put_var_int(ncid2, time_var_new_id, &y)))
-//        ERR(retval);
-//        if ((retval = nc_put_var_float(ncid2, var_new_id, &avg[0])))
-//        ERR(retval);
 
         /* Close the file. This frees up any internal netCDF resources
         * associated with the file, and flushes any buffers. */
