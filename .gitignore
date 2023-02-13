@@ -3,3 +3,4 @@
 *.sh.o*
 *.nc
 *.o*
+/reading_data/
