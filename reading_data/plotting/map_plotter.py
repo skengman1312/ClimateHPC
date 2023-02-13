@@ -73,16 +73,17 @@ def animated_plot(df, grid):
     # plt.show()
 
 
-def round_plotting(i, type="ssh"):
+def round_plotting(i, kind="ssh", directory="final_plots", dpi = 1000):
     plt.ioff()
     d = {"ssh": {"title": "Sea Surface Elevation", "cbar": "elevation in meters", "fname": "map_ssh.png", "filepath":'../reading_ssh_v2/map_summarized.nc'},
-         "unod": {"title": "Horizontal speed", "cbar": "speed in meters per second", "fname": "map_unod.png", "filepath":'map_summarized_unod.nc'}
+         "unod": {"title": "Horizontal speed", "cbar": "speed in meters per second", "fname": "map_unod.png", "filepath":'map_summarized_unod.nc'},
+         "vnod": {"title": "Vertical speed", "cbar": "speed in meters per second", "fname": "map_vnod.png", "filepath":'map_summarized_vnod.nc'}
          }
     mon = {0: "January", 1: "February", 2: "March", 3: "April", 4: "May", 5: "June",
                      6: "July", 7: "August", 8: "September", 9: "October", 10: "November", 11: "December"}
 
     f3 = Dataset('fesom.mesh.diag.nc')
-    f5 = Dataset(d[type]["filepath"])
+    f5 = Dataset(d[kind]["filepath"])
     m = Basemap(projection='robin', lon_0=0, resolution='c')
     # print(f3)
     # print(f5.variables)
@@ -94,15 +95,15 @@ def round_plotting(i, type="ssh"):
 
     plt.tricontourf(x, y, f5.variables[v][i], cmap='coolwarm', extend='both', alpha=0.5, vmin=-1.90, vmax=2)
     cbar = plt.colorbar(orientation='horizontal', pad=0.03)
-    cbar.set_label(d[type]["cbar"])
+    cbar.set_label(d[kind]["cbar"])
     m.drawcoastlines()
     m.drawmapboundary(fill_color='0.9')
     m.fillcontinents()
 
-    plt.title(f"{mon[i]} {d[type]['title']}")
+    plt.title(f"{mon[i]} {d[kind]['title']}")
     plt.tight_layout()
-    savename = f"final_plots/{mon[i].lower()}_{d[type]['fname']}"
-    plt.savefig(savename, dpi=1000)
+    savename = f"{directory}/{mon[i].lower()}_{d[kind]['fname']}"
+    plt.savefig(savename, dpi=dpi)
 
 
 if __name__ == "__main__":
@@ -146,5 +147,5 @@ if __name__ == "__main__":
     # map_plot(ssh.loc[[11]], grid, filename="shh_map.png")
     # map_plot(unod, grid, filename="unod_map.png")
     # map_plot(vnod, grid, filename="vnod_map.png")
-    [round_plotting(i, type="unod") for i in range(12)]
+    [[round_plotting(i, kind=t, dpi=200, directory="low_res_plots") for i in range(12)] for t in ["ssh","vnod","unod"]]
 
