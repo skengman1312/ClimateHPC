@@ -3,6 +3,7 @@ Final project for HPC4DS course held at UniTn
 This is a try
 meglio di no 
 forse ci sono riuscito 
+```bash
 ClimateHPC/
 ├── Final_settings
 │   ├── elevation_data
@@ -26,3 +27,4 @@ ClimateHPC/
 ├── README.md
 └── utils
     ├── tdata.csv
+```
