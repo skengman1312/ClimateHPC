@@ -1,8 +1,7 @@
 # ClimateHPC
 Final project for HPC4DS course held at UniTn
-This is a try
-meglio di no 
-forse ci sono riuscito 
+This is the structure of the files contained in the repo.
+Each folder in final settings contains a bash file and a c file for the two kinds of files.
 ```bash
 ClimateHPC/
 ├── Final_settings
